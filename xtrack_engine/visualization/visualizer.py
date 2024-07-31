@@ -28,6 +28,7 @@ class Visualizer(LoggableEntity):
             y_axis_label : str = 'Y axis',
             title : str = '',
             grid : bool = True,
+            x_ticks_rotation : float = 0,
         ) -> Figure:
         """
         Method to create a bar plot given the data.
@@ -42,6 +43,7 @@ class Visualizer(LoggableEntity):
             y_axis_label: the label to be used for the Y-axis.
             title: the title to be used.
             grid: a flag that indicates whether the figure should contain a grid or not.
+            x_ticks_rotation: the rotation degrees of the X-axis ticks.
 
         Returns:
             A matplotlib figure containing the barplot of the given data.
@@ -56,6 +58,7 @@ class Visualizer(LoggableEntity):
         plt.ylabel(y_axis_label)
         plt.title(title)
         plt.grid(grid)
+        plt.xticks(rotation = x_ticks_rotation)
         plt.tight_layout()
 
         self.logger.debug('Created bar plot')

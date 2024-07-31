@@ -125,7 +125,7 @@ class MottoAnalyzer(Analyzer):
         mottos_df = self.db_connector.retrieve_table_from_sql(
             query,
             {
-                'campaigns' : self.campaigns,
+                'campaigns' : tuple(self.campaigns),
                 'top_k' : top_k
             }
         )
@@ -221,7 +221,8 @@ class MottoAnalyzer(Analyzer):
             x_axis_label : str = 'Mottos',
             y_axis_label : str = 'Frequency',
             title : str = 'Most employed mottos',
-            grid : bool = True
+            grid : bool = True,
+            x_ticks_rotation : float = 0
         ) -> Figure:
         """
         Method to convert the motto analysis results into a figure.
@@ -234,6 +235,7 @@ class MottoAnalyzer(Analyzer):
             y_axis_label: the label to be used for the Y-axis.
             title: the title to be used.
             grid: a flag that indicates whether the figure should contain a grid or not.
+            x_ticks_rotation: the rotation degrees of the X-axis ticks.
         """
         self.logger.debug('Converting motto analysis results to image')
 
@@ -247,7 +249,8 @@ class MottoAnalyzer(Analyzer):
             x_axis_label = x_axis_label,
             y_axis_label = y_axis_label,
             title = title,
-            grid = grid
+            grid = grid,
+            x_ticks_rotation = x_ticks_rotation
         )
 
         self.logger.debug('Converted motto analysis results to image')

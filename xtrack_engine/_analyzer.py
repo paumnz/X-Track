@@ -5,10 +5,11 @@ Module to implement an abstract analyzer of XTRACK-engine.
 
 import logging
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, Dict, Tuple
 
 from matplotlib.figure import Figure
-from pandas import DataFrame
+from pandas import DataFrame, ExcelWriter
 
 from xtrack_engine._utils.loggable_entity import LoggableEntity
 from xtrack_engine.database_connection.db_connector import DBConnector
@@ -97,7 +98,11 @@ class Analyzer(ABC, LoggableEntity):
             **kwargs: the keyword arguments to be used for generating the Pandas DataFrame (if any).
         """
         results_df = self.to_pandas_dataframe(*args, **kwargs)
-        results_df.to_excel(output_path, sheet_name = sheet_name, index = False, header = True)
+
+        write_mode = 'a' if Path(output_path).is_file() else 'w'
+
+        with ExcelWriter(output_path, engine = 'openpyxl', mode = write_mode) as writer:
+            results_df.to_excel(writer, sheet_name = sheet_name, index = False, header = True)
 
 
     def to_png(self, output_path : str, *args : Tuple[Any, ...], **kwargs : Dict[str, Any]) -> None:
