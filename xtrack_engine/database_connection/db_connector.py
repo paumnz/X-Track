@@ -5,7 +5,7 @@ Module to implement a database connector for the `engine` module of `X-TRACK`.
 
 import configparser
 import logging
-from typing import Any, Dict, Literal
+from typing import Any, Dict, Literal, Tuple
 
 import pandas as pd
 from sqlalchemy import Engine, create_engine
@@ -98,13 +98,15 @@ class DBConnector(LoggableEntity):
 
     def retrieve_table_from_sql(
             self,
-            query_text : str
+            query_text : str,
+            query_params : Dict[str, Any] | Tuple[Any, ...]
         ) -> pd.DataFrame:
         """
         Method to retrieve a table using its name and its location on a schema.
 
         Args:
-            query_text: the query to be executed on the connected database
+            query_text: the query to be executed on the connected database.
+            query_params: the parameters of the query (if any).
 
         Returns:
             A Pandas DataFrame containing the data from the specified table.
@@ -114,15 +116,12 @@ class DBConnector(LoggableEntity):
         # Step 1: Establishing connection to the database
         self.__connect()
 
-        # Step 2: Embed the connected database in the query (required)
-        query_text = query_text.format(self.conn_params['db_name'])
-
-        # Step 3: Retrieving the desired table
-        table_df = pd.read_sql(query_text, con = self.engine)
+        # Step 2: Retrieving the desired table
+        table_df = pd.read_sql(query_text, con = self.engine, params = query_params)
 
         self.logger.debug(f'Executed query: {query_text}')
 
-        # Step 4: Disconnecting from the database
+        # Step 3: Disconnecting from the database
         self.__disconnect()
 
         return table_df
