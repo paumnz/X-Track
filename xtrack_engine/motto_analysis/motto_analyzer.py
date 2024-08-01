@@ -236,6 +236,9 @@ class MottoAnalyzer(Analyzer):
             title: the title to be used.
             grid: a flag that indicates whether the figure should contain a grid or not.
             x_ticks_rotation: the rotation degrees of the X-axis ticks.
+
+        Returns:
+            The figure containing the results of the MottoAnalyzer.
         """
         self.logger.debug('Converting motto analysis results to image')
 
