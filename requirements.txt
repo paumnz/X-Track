@@ -4,3 +4,7 @@ sqlalchemy
 matplotlib
 openpyxl
 networkx
+plotly-express
+kaleido==0.1.0
+nltk
+wordcloud
