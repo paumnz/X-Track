@@ -8,3 +8,7 @@ plotly-express
 kaleido==0.1.0
 nltk
 wordcloud
+liwc
+torch==2.3.0
+pysentimiento
+tqdm
