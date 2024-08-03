@@ -12,3 +12,6 @@ liwc
 torch==2.3.0
 pysentimiento
 tqdm
+gensim
+spacy
+scikit-learn
