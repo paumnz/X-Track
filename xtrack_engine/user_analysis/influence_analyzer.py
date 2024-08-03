@@ -3,20 +3,42 @@ Module to implement the influence analysis functionality of XTRACK's engine.
 """
 
 
+import logging
 from collections import Counter
-from typing import Any, List, Tuple
+from typing import Any, List, Literal, Tuple
 
 import networkx as nx
 from matplotlib.figure import Figure
 from pandas import DataFrame
 
 from xtrack_engine._analyzer import Analyzer
+from xtrack_engine.database_connection.db_connector import DBConnector
+from xtrack_engine.errors.config_errors import IllegalAnalysisConfigError
+from xtrack_engine.network_analysis.network_generation.retweet_network_generator import RetweetNetworkGenerator
+from xtrack_engine.network_analysis.network_generation.reply_network_generator import ReplyNetworkGenerator
 
 
 class InfluenceAnalyzer(Analyzer):
     """
     Class to implement the influencers detection functionality of XTRACK's engine.
     """
+
+
+    def __init__(self, campaigns : str | Tuple[str, ...], db_connector : DBConnector, log_level : int = logging.INFO) -> None:
+        """
+        Constructor method of the NetworkGenerator class.
+
+        Args:
+            campaign (str | Tuple[str, ...]): the campaign to be analyzed.
+            db_connector (DBConnector): the database connector to be used for the analysis.
+            log_level (int): the log level to be used for filtering logs in the runtime.
+        """
+        super().__init__(log_level)
+
+        self.campaigns : Tuple[str, ...] = campaigns if type(campaigns) == tuple else (campaigns, )
+        self.db_connector : DBConnector = db_connector
+        self.retweet_network_generator : RetweetNetworkGenerator = RetweetNetworkGenerator(campaigns, db_connector, log_level)
+        self.reply_network_generator : RetweetNetworkGenerator = RetweetNetworkGenerator(campaigns, db_connector, log_level)
 
 
     def __calculate_betweenness_centrality(self, network : nx.Graph, top_k : int) -> Tuple[Any, ...]:
@@ -115,18 +137,32 @@ class InfluenceAnalyzer(Analyzer):
         return tuple(top_influencers)
 
 
-    def analyze(self, network : nx.Graph, top_k : int) -> Tuple[Any, ...]:
+    def analyze(
+            self, 
+            top_k : int,
+            hashtags : Tuple[str, ...] | None = None,
+            network_type : Literal['retweet', 'reply'] = 'retweet'
+        ) -> Tuple[Any, ...]:
         """
         Method to carry out the influence analysis of the XTRACK's engine.
 
         Args:
-            network: the network whose influential users will be extracted.
             top_k: the number of most influential users to be retrieved.
+            hashtags: the hashtags with which to filter the network creation.
+            network_type: the type of network to be created.
 
         Returns:
             The top_k most influential users of the network.
         """
         self.logger.debug(f'Calculating top-{top_k} most influential users by all centrality measures')
+
+        match network_type:
+            case 'retweet':
+                network : nx.DiGraph = self.retweet_network_generator.generate_network(hashtags = hashtags)
+            case 'reply':
+                network : nx.DiGraph = self.reply_network_generator.generate_network(hashtags = hashtags)
+            case _:
+                raise IllegalAnalysisConfigError(f'Illegal network_type configuration for InfluenceAnalyzer: {network_type}')
 
         # Step 1: Calculating the top-K most influential users by individual per centrality measure
         bc_ranking = self.__calculate_betweenness_centrality(network, top_k)
