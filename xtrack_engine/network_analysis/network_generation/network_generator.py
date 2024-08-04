@@ -4,12 +4,14 @@ Module to implement the template followed by all network generators of XTRACK fr
 
 
 import logging
+import math
 from abc import ABC, abstractmethod
-from datetime import date
-from typing import Tuple
+from datetime import date, timedelta
+from typing import List, Tuple
 
 import networkx as nx
 from pandas import DataFrame
+from tqdm.auto import tqdm
 
 from xtrack_engine._utils.loggable_entity import LoggableEntity
 from xtrack_engine.database_connection.db_connector import DBConnector
@@ -34,6 +36,8 @@ class NetworkGenerator(ABC, LoggableEntity):
 
         self.campaigns : Tuple[str, ...] = campaigns if type(campaigns) == tuple else (campaigns, )
         self.db_connector : DBConnector = db_connector
+        self.min_date : date = None
+        self.max_date : date = None
 
 
     def __retrieve_first_date(self, hashtags : Tuple[str, ...] | None = None) -> date:
@@ -67,10 +71,10 @@ class NetworkGenerator(ABC, LoggableEntity):
             """
             params = {'campaigns' : tuple(self.campaigns), 'hashtags' : hashtags}
 
-        first_date : DataFrame = self.db_connector.retrieve_table_from_sql(query, params)['min_date'].to_list()[0]
+        first_date : date = self.db_connector.retrieve_table_from_sql(query, params)['min_date'].to_list()[0]
 
         self.logger.debug('Retrieved the first date of the campaign')
-        return first_date
+        return date(first_date.year, first_date.month, first_date.day)
 
 
     def __retrieve_last_date(self, hashtags : Tuple[str, ...] | None = None) -> date:
@@ -104,10 +108,10 @@ class NetworkGenerator(ABC, LoggableEntity):
             """
             params = {'campaigns' : tuple(self.campaigns), 'hashtags' : hashtags}
 
-        last_date : DataFrame = self.db_connector.retrieve_table_from_sql(query, params)['max_date'].to_list()[0]
+        last_date : date = self.db_connector.retrieve_table_from_sql(query, params)['max_date'].to_list()[0]
 
         self.logger.debug('Retrieved the last date of the campaign')
-        return last_date
+        return date(last_date.year, last_date.month, last_date.day + 1)
 
 
     def __filter_edges_with_non_relevant_weight(self, network : nx.DiGraph, min_threshold : int) -> None:
@@ -197,11 +201,11 @@ class NetworkGenerator(ABC, LoggableEntity):
             The generated network in the given time interval with relevant relationships (if threshold is given).
         """
 
-        first_date = first_date if first_date is not None else self.__retrieve_first_date(hashtags)
-        last_date = last_date if last_date is not None else self.__retrieve_last_date(hashtags)
+        self.min_date = first_date if first_date is not None else self.__retrieve_first_date(hashtags)
+        self.max_date = last_date if last_date is not None else self.__retrieve_last_date(hashtags)
 
         # Step 1: Extracting network
-        network_df : DataFrame = self._generate_network_dataframe(first_date, last_date, hashtags)
+        network_df : DataFrame = self._generate_network_dataframe(self.min_date, self.max_date, hashtags)
 
         # Step 2: Building network from dataframe
         network : nx.DiGraph = self.__generate_network_from_dataframe(network_df)
@@ -211,3 +215,52 @@ class NetworkGenerator(ABC, LoggableEntity):
             self.__filter_edges_with_non_relevant_weight(network, min_threshold)
 
         return network
+
+
+    def generate_networks_per_time_window(
+            self,
+            window_size : int,
+            hashtags : Tuple[str, ...] | None = None,
+            first_date : date | None = None,
+            last_date : date | None = None,
+        ) -> Tuple[nx.DiGraph, ...]:
+        """
+        Private method to extract the network related to each time window to be studied.
+
+        Args:
+            window_size: the size of the window to consider (in days).
+            hashtags: the hashtags to be used for filtering network extraction (if any).
+            first_date: the first date to be considered for network retrieval. Defaults to the first date of the campaigns/hashtags.
+            last_date: the last date to be considered for network retrieval. Defaults to the last date of the campaigns/hashtags.
+
+        Returns:
+            A tuple of networks with the extracted network per time window.
+        """
+        networks_per_window : List[nx.DiGraph] = []
+
+        self.min_date = first_date if first_date is not None else self.__retrieve_first_date(hashtags)
+        self.max_date = last_date if last_date is not None else self.__retrieve_last_date(hashtags)
+
+        self.logger.debug(f'Extracting networks between {self.min_date} and {self.max_date} (window_size = {window_size})')
+
+        original_first_date = self.min_date
+        first_date = self.min_date
+        last_date = self.max_date
+
+        tqdm_bar_length = math.ceil((last_date - first_date).days / window_size)
+        tqdm_bar = tqdm(range(tqdm_bar_length), desc = 'Extracting networks per window')
+
+        while first_date < last_date:
+            next_date = first_date + timedelta(days = window_size)
+
+            networks_per_window.append(self.generate_network(first_date, next_date, hashtags))
+
+            first_date = next_date
+            tqdm_bar.update(1)
+
+        self.min_date = original_first_date
+        self.max_date = last_date
+
+        self.logger.debug(f'Extracting networks between {self.min_date} and {self.max_date} (window_size = {window_size})')
+
+        return tuple(networks_per_window)

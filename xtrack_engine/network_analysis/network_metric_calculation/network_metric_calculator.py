@@ -15,6 +15,16 @@ class NetworkMetricCalculator(LoggableEntity):
     A class to implement the network metric calculation functionality of XTrack's engine.
     """
 
+    DENSITY_METRIC : str = 'density'
+    IN_DEGREE_METRIC : str = 'in_degree'
+    OUT_DEGREE_METRIC : str = 'out_degree'
+    EFFICIENCY_METRIC : str = 'efficiency'
+    EIGENVECTOR_CENTRALITY_METRIC : str = 'eigenvector_centrality'
+    MODULARITY_METRIC : str = 'modularity'
+    DIAMETER_METRIC : str = 'diameter'
+    CLUSTERING_COEFFICIENT_METRIC : str = 'clustering_coefficient'
+    NODE_NUMBER_METRIC : str = 'node_number'
+    EDGE_NUMBER_METRIC : str = 'edge_number'
 
     def calculate_network_density(self, network : nx.DiGraph) -> float:
         """

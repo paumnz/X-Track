@@ -51,7 +51,7 @@ class ReplyNetworkGenerator(NetworkGenerator):
                 WHERE
                     (t_rter.campaign IN %(campaigns)s OR t_rted.campaign IN %(campaigns)s) AND
                     t_rter.created_at >= %(first_date)s AND
-                    t_rter.created_at <= %(last_date)s
+                    t_rter.created_at < %(last_date)s
                 GROUP BY rter, rted
             """
             params = {'campaigns' : tuple(self.campaigns), 'first_date' : first_date, 'last_date' : last_date}
@@ -74,7 +74,7 @@ class ReplyNetworkGenerator(NetworkGenerator):
                 WHERE
                     (t_rter.campaign IN %(campaigns)s OR t_rted.campaign IN %(campaigns)s) AND
                     t_rter.created_at >= %(first_date)s AND
-                    t_rter.created_at <= %(last_date)s AND
+                    t_rter.created_at < %(last_date)s AND
                     (h_rter.hashtag IN %(hashtags)s OR h_rted.hashtag IN %(hashtags)s)
                 GROUP BY rter, rted
             """
