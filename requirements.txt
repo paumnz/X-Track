@@ -16,3 +16,4 @@ gensim
 spacy
 scikit-learn
 python-louvain
+botometer==2.0.1
