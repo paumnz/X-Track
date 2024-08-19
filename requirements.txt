@@ -17,3 +17,5 @@ spacy
 scikit-learn
 python-louvain
 botometer==2.0.1
+flask
+flask-session

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XTrack: Social Network Analysis</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <img src="{{ url_for('static', filename='images/xtrack-logo.jpeg') }}" alt="XTrack Logo" class="logo">
+            <h1>XTrack: Your Campaign Social Network Analysis Framework</h1>
+            <p class="description">
+                XTrack is a cutting-edge framework designed to analyze social media campaigns effectively.
+                Uncover insights, track engagement, and optimize your marketing strategies with our
+                comprehensive social network analysis tools.
+            </p>
+        </header>
+
+        <section class="form-section">
+            <h2>Analyze Your Campaign</h2>
+            <form id="analysis-form">
+                <div class="input-group">
+                    <label for="input1">Campaign: <span class="required">*</span></label>
+                    <input type="text" id="input1" name="input1" placeholder="brexit" required>
+                </div>
+                <div class="input-group">
+                    <label for="input2">Hashtags:</label>
+                    <input type="text" id="input2" name="input2" placeholder="hashtag1, hashtag2, hashtag3, ..., hashtagN">
+                </div>
+                <button type="submit" id="analyze-btn">Analyze Now</button>
+            </form>
+        </section>
+
+        <div id="result" class="result"></div>
+
+        <!-- Spinner -->
+        <div id="loading-spinner" class="loading-spinner" style="display: none;">
+            <div class="spinner"></div>
+            <p>Processing, please wait...</p>
+        </div>
+    </div>
+
+    <script type="module" src="{{ url_for('static', filename='js/analyze.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XTrack Analysis Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/result_styles.css') }}">
+</head>
+
+<body>
+    <div class="full-page-container">
+        <header>
+            <h1>XTrack Analysis Results</h1>
+        </header>
+
+        <!-- Section 1: Motto analysis -->
+        <div class="section">
+            <h2>Motto Analysis</h2>
+            <div class="xtrack-analysis-container">
+                <div class="xtrack-controls">
+                    <label for="sentiment-select">Sentiment:</label>
+                    <select id="sentiment-select">
+                        <option value="all">All</option>
+                        <option value="positive">Positive</option>
+                        <option value="negative">Negative</option>
+                    </select>
+                </div>
+                <div class="canvas-box">
+                    <h3>Most Employed hashtags</h3>
+                    <canvas id="cv_motto_all"></canvas>
+                    <canvas id="cv_motto_negative" style="display: none;"></canvas>
+                    <canvas id="cv_motto_positive" style="display: none;"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Media outlets analysis -->
+        <div class="section">
+            <h2>Media Outlets Analysis</h2>
+            <div class="xtrack-analysis-container">
+                <div class="canvas-box">
+                    <h3>Most Employed Domains</h3>
+                    <div class="xtrack-canvas-container">
+                        <canvas id="cv_domain"></canvas>
+                    </div>
+                </div>
+                <div class="canvas-box">
+                    <h3>Most Employed Headlines</h3>
+                    <div class="xtrack-canvas-container">
+                        <canvas id="cv_headline"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: User Analysis -->
+        <div class="section">
+            <h2>User analysis</h2>
+            <div class="xtrack-analysis-container">
+                <div class="canvas-box">
+                    <h3>Account creation per month</h3>
+                    <div class="xtrack-canvas-container">
+                        <canvas id="cv_account_creation"></canvas>
+                    </div>
+                </div>
+                <div class="canvas-box">
+                    <h3 class="tooltip">
+                        Most influential users
+                        <span class="tooltip-text">
+                            Influential users are computed based on their positioning in top-10 rankings in 6 different criteria:<br>
+                            &#8226; User centrality in the retweet network.<br>
+                            &#8226; User centrality in the reply network.<br>
+                            &#8226; User tweet activity.<br>
+                            &#8226; User reply activity.<br>
+                            &#8226; User engagement metrics (retweets and likes).<br>
+                            &#8226; User conversational engagement metrics (replies and quotes).<br>
+                        </span>
+                    </h3>
+                    <div class="xtrack-canvas-container">
+                        <canvas id="cv_influential_users"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Media outlets analysis -->
+        <div class="section">
+            <h2>Tweet analysis</h2>
+            <div class="xtrack-analysis-container">
+                <div class="canvas-box">
+                    <h3>Tweet creation per hour</h3>
+                    <div class="xtrack-canvas-container">
+                        <canvas id="cv_tweet_creation"></canvas>
+                    </div>
+                </div>
+                <div class="canvas-box">
+                    <h3 class="tooltip">Tweet creation per hour and sentiment type <span class="tooltip-text">Neutral tweets are not shown in the plot, which is why numbers may not match the total tweet count per hour in the left plot.</span></h3>
+                    <div class="xtrack-canvas-container">
+                        <canvas id="cv_tweet_creation_per_sentiment"></canvas>
+                    </div>
+                </div>
+            </div>
+            <br>
+            <div class="xtrack-canvas-container">
+                <div class="plotly-box">
+                    <h3>Tweet Word Cloud</h3>
+                    <div id="cv_tweet_word_cloud"></div>
+                </div>
+                <div class="canvas-box">
+                    <h3>Most employed languages</h3>
+                    <canvas id="cv_tweet_language" style="width: 80%;"></canvas>
+                </div>
+            </div>
+            <br>
+            <div class="xtrack-analysis-container">
+                <div class="canvas-box">
+                    <h3 class="tooltip">Tweet impact <span class="tooltip-text">Retweets are used as the impact metric, although other metrics (e.g., likes) can be used in the tool.</span></h3>
+                    <div class="xtrack-canvas-container table-container">
+                        <table id="table_tweet_impact">
+                            <thead>
+                                <tr>
+                                    <th>Tweet</th>
+                                    <th>Author</th>
+                                    <th>Impact</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Table rows will be inserted here dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="canvas-box" style="justify-content: center;">
+                    <h3>Tweet duplication</h3>
+                    <div class="xtrack-canvas-container table-container">
+                        <table id="table_tweet_duplication">
+                            <thead>
+                                <tr>
+                                    <th>Tweet</th>
+                                    <th>Author</th>
+                                    <th>Duplications</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Table rows will be inserted here dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <br>
+            <div id="cv_tweet_entity_tree_map" class="plotly-box"></div>
+            <br>
+        </div>
+
+        <!-- Back to Analysis Button -->
+        <section class="action-section">
+            <button onclick="window.location.href='{{ url_for('serve_frontend') }}'" class="back-btn">Back to Analysis</button>
+        </section>
+    </div>
+    <script type="module" src="{{ url_for('static', filename='js/show_analysis_results.js') }}"></script>
+</body>
+
+</html>

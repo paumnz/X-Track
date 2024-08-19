@@ -41,6 +41,7 @@ class AccountCreationAnalyzer(Analyzer):
             LEFT JOIN hashtagt_tweet ON hashtagt_tweet.tweet_id = tweet.id
             LEFT JOIN hashtag ON hashtagt_tweet.hashtag_id = hashtag.id
         WHERE tweet.campaign IN %(campaigns)s AND
+            user.creation_date IS NOT NULL AND
             (%(hashtags)s IS NULL OR hashtag.hashtag IN %(hashtags)s);
         """
 
@@ -64,7 +65,7 @@ class AccountCreationAnalyzer(Analyzer):
     def analyze(
             self,
             hashtags : Tuple[str, ...] | None = None,
-        ) -> Tuple[Any, ...]:
+        ) -> DataFrame:
         """
         Method to carry out the account creation analysis of the XTRACK's engine.
 

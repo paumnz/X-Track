@@ -31,7 +31,7 @@ class TweetSentimentCreationTimeAnalyzer(Analyzer):
 
         if hashtags is None:
             query = """
-                SELECT CAST(CONCAT(DAY(tweet.created_at), HOUR(tweet.created_at)) AS DECIMAL) AS dayhour, COUNT(tweet.id) AS tweet_volume
+                SELECT CONCAT(DATE_FORMAT(tweet.created_at, '%%Y-%%m-%%d'), CONCAT(' ', DATE_FORMAT(tweet.created_at, '%%H'))) AS dayhour, COUNT(tweet.id) AS tweet_volume
                 FROM tweet
                     INNER JOIN sentiment ON sentiment.tweet_id = tweet.id
                 WHERE
@@ -43,7 +43,7 @@ class TweetSentimentCreationTimeAnalyzer(Analyzer):
             params = {'campaigns': tuple(self.campaigns)}
         else:
             query = """
-                SELECT CAST(CONCAT(DAY(tweet.created_at), HOUR(tweet.created_at)) AS DECIMAL) AS dayhour, COUNT(tweet.id) AS tweet_volume
+                SELECT CONCAT(DATE_FORMAT(tweet.created_at, '%%Y-%%m-%%d'), CONCAT(' ', DATE_FORMAT(tweet.created_at, '%%H'))) AS dayhour, COUNT(tweet.id) AS tweet_volume
                 FROM tweet
                     INNER JOIN sentiment ON sentiment.tweet_id = tweet.id
                     INNER JOIN hashtagt_tweet ON hashtagt_tweet.tweet_id = tweet.id
@@ -79,7 +79,7 @@ class TweetSentimentCreationTimeAnalyzer(Analyzer):
 
         if hashtags is None:
             query = """
-                SELECT CAST(CONCAT(DAY(tweet.created_at), HOUR(tweet.created_at)) AS DECIMAL) AS dayhour, COUNT(tweet.id) AS tweet_volume
+                SELECT CONCAT(DATE_FORMAT(tweet.created_at, '%%Y-%%m-%%d'), CONCAT(' ', DATE_FORMAT(tweet.created_at, '%%H'))) AS dayhour, COUNT(tweet.id) AS tweet_volume
                 FROM tweet
                     INNER JOIN sentiment ON sentiment.tweet_id = tweet.id
                 WHERE
@@ -91,7 +91,7 @@ class TweetSentimentCreationTimeAnalyzer(Analyzer):
             params = {'campaigns': tuple(self.campaigns)}
         else:
             query = """
-                SELECT CAST(CONCAT(DAY(tweet.created_at), HOUR(tweet.created_at)) AS DECIMAL) AS dayhour, COUNT(tweet.id) AS tweet_volume
+                SELECT CONCAT(DATE_FORMAT(tweet.created_at, '%%Y-%%m-%%d'), CONCAT(' ', DATE_FORMAT(tweet.created_at, '%%H'))) AS dayhour, COUNT(tweet.id) AS tweet_volume
                 FROM tweet
                     INNER JOIN sentiment ON sentiment.tweet_id = tweet.id
                     INNER JOIN hashtagt_tweet ON hashtagt_tweet.tweet_id = tweet.id

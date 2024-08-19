@@ -7,7 +7,7 @@ import logging
 import re
 from typing import Tuple
 
-from matplotlib.figure import Figure
+import plotly.graph_objects as go
 from nltk.corpus import stopwords
 from pandas import DataFrame
 from wordcloud import WordCloud, STOPWORDS
@@ -151,7 +151,7 @@ class WordCloudAnalyzer(Analyzer):
             width : float = 15,
             height : float = 10,
             title : str = 'Tweet wordcloud',
-        ) -> Figure:
+        ) -> go.Figure:
         """
         Method to convert the WordCloudAnalyzer results into a figure.
 
@@ -171,7 +171,7 @@ class WordCloudAnalyzer(Analyzer):
             width = 3000,
             height = 2000,
             random_state = 42,
-            background_color = 'white',
+            background_color = '#1a1a2e',
             colormap = 'Set2',
             collocations = False,
             stopwords = STOPWORDS

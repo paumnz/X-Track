@@ -33,7 +33,7 @@ class InfluenceAnalyzer(Analyzer):
             db_connector (DBConnector): the database connector to be used for the analysis.
             log_level (int): the log level to be used for filtering logs in the runtime.
         """
-        super().__init__(log_level)
+        super().__init__(campaigns, db_connector, log_level)
 
         self.campaigns : Tuple[str, ...] = campaigns if type(campaigns) == tuple else (campaigns, )
         self.db_connector : DBConnector = db_connector

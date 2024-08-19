@@ -337,7 +337,7 @@ class Visualizer(LoggableEntity):
             width : float = 10,
             height : float = 7,
             title : str = '',
-        ) -> Figure:
+        ) -> go.Figure:
         """
         Method to create a wordcloud plot given the data.
 
@@ -355,12 +355,23 @@ class Visualizer(LoggableEntity):
         """
         self.logger.debug('Creating wordcloud plot')
 
-        fig = plt.figure(figsize = (width, height))
+        wordcloud_array = word_cloud.to_array()
 
-        plt.imshow(word_cloud)
-        plt.axis("off")
-        plt.title(title)
-        plt.tight_layout()
+        # Plot the word cloud using Plotly
+        layout = go.Layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+        )
+
+        fig = go.Figure(go.Image(z=wordcloud_array), layout)
+
+        # Update the layout for better visualization
+        fig.update_layout(
+            title=title,
+            xaxis=dict(showticklabels=False),
+            yaxis=dict(showticklabels=False),
+            margin=dict(l=10, r=10, t=40, b=10)
+        )
 
         self.logger.debug('Created wordcloud plot')
 

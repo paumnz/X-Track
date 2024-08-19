@@ -46,7 +46,13 @@ class MultiCriteriaUserAnalyzer(Analyzer):
         self.user_reply_activity_analyzer = UserReplyActivityAnalyzer(campaigns, db_connector, log_level)
 
 
-    def analyze(self, top_k : int, hashtags : Tuple[str, ...], retweet_network : nx.Graph, reply_network : nx.Graph) -> Tuple[Any, ...]:
+    def analyze(
+            self,
+            top_k : int,
+            hashtags : Tuple[str, ...],
+            retweet_network : nx.Graph | None = None,
+            reply_network : nx.Graph | None = None
+        ) -> Tuple[Any, ...]:
         """
         Method to detect most relevant users of the given campaigns analysis of the XTRACK's engine.
 
@@ -62,8 +68,8 @@ class MultiCriteriaUserAnalyzer(Analyzer):
         self.logger.debug(f'Calculating top-{top_k} most influential users by various criteria')
 
         # Step 1: Calculating influential users based on centrality measures
-        top_centrality_users_retweet = self.influence_analyzer.analyze(retweet_network, top_k)
-        top_centrality_users_reply = self.influence_analyzer.analyze(reply_network, top_k)
+        top_centrality_users_retweet = self.influence_analyzer.analyze(top_k, hashtags, 'retweet')
+        top_centrality_users_reply = self.influence_analyzer.analyze(top_k, hashtags, 'reply')
 
         # Step 2: Calculating influential users based on their activity
         top_posters = self.user_tweet_activity_analyzer.analyze(top_k, hashtags)
@@ -82,7 +88,7 @@ class MultiCriteriaUserAnalyzer(Analyzer):
                     users_with_highest_reply_quote_impact
 
         top_users = [user for user, _ in top_users]
-        self.analysis_results : Tuple[Tuple[Any, int], ...] = tuple(Counter(top_users).most_common())
+        self.analysis_results : Tuple[Tuple[Any, int], ...] = tuple(Counter(top_users).most_common())[:10]
 
         self.logger.debug(f'Calculated top-{top_k} most influential users by various criteria')
 
