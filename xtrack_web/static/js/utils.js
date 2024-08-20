@@ -160,6 +160,76 @@ export function create_biline_plot(data, canvas_element, x1_col_name, y1_col_nam
 }
 
 
+export function create_multiline_plot(data, canvas_element, x_label_ticks_shown = 1, legend_display = true) {
+    var ctx = canvas_element.getContext('2d');
+    ctx.clearRect(0, 0, canvas_element.width, canvas_element.height);
+
+    const defaultColors = [
+        'rgba(255, 99, 132, 1)',  // Red
+        'rgba(54, 162, 235, 1)',  // Blue
+        'rgba(75, 192, 192, 1)',  // Green
+        'rgba(255, 206, 86, 1)',  // Yellow
+        'rgba(153, 102, 255, 1)', // Purple
+        'rgba(255, 159, 64, 1)',  // Orange
+        'rgba(199, 199, 199, 1)', // Gray
+        'rgba(83, 102, 255, 1)',  // Blueish
+        'rgba(102, 205, 170, 1)', // Aquamarine
+        'rgba(255, 69, 0, 1)'     // Red-Orange
+    ];
+
+    if (data['x_values'].length === 0 || data['y_values'].length === 0) {
+        // If data is empty, show a message on the canvas
+        ctx.font = '16px Roboto, sans-serif';
+        ctx.fillStyle = '#eaeaea';
+        ctx.textAlign = 'center';
+        ctx.fillText('No data available for plotting.', canvas_element.width / 2, canvas_element.height / 2);
+    } else {
+        // Prepare datasets for each line
+        const datasets = data['y_values'].map((y_values, index) => {
+            const color = defaultColors[index % defaultColors.length];
+            return {
+                label: data.metrics[index],  // Label from the metrics array
+                data: y_values,
+                fill: false,
+                borderColor: color,  // Varying color for each line
+                backgroundColor: color.replace('1)', '0.5)'),
+                tension: 0.1
+            };
+        });
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data['x_values'],
+                datasets: datasets
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    },
+                    x: {
+                        ticks: {
+                            autoSkip: false,
+                            maxRotation: 90,
+                            minRotation: 90,
+                            callback: function(value, index, ticks) {
+                                return index % x_label_ticks_shown === 0 ? this.getLabelForValue(value) : '';
+                            }
+                        }
+                    },
+                },
+                plugins: {
+                    legend: {
+                        display: legend_display
+                    }
+                }
+            }
+        });
+    }
+}
+
+
 export function create_plotly_figure(title, plotly_data, div_element_id, height = 800, hover_mode = true) {
     const plotlyLayout = {
         title: {

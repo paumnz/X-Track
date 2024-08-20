@@ -158,6 +158,28 @@
             <br>
         </div>
 
+        <!-- Section 5: Network metric analysis -->
+        <div class="section">
+            <h2>Network Metric Analysis</h2>
+            <div class="xtrack-analysis-container">
+                <div class="canvas-box">
+                    <h3>Retweet network</h3>
+                    <div class="xtrack-canvas-container">
+                        <canvas id="cv_retweet_network"></canvas>
+                    </div>
+                </div>
+            </div>
+            <br>
+            <div class="xtrack-analysis-container">
+                <div class="canvas-box">
+                    <h3>Reply network</h3>
+                    <div class="xtrack-canvas-container">
+                        <canvas id="cv_reply_network"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Back to Analysis Button -->
         <section class="action-section">
             <button onclick="window.location.href='{{ url_for('serve_frontend') }}'" class="back-btn">Back to Analysis</button>

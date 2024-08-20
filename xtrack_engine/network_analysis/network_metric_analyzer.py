@@ -276,11 +276,3 @@ class NetworkMetricAnalyzer(Analyzer):
         self.logger.debug('Converted network metric analysis results to image')
 
         return fig
-
-
-from xtrack_engine.database_connection.db_connector import DBConnector
-
-db_conn = DBConnector('../../config.ini', log_level = 0)
-analyzer = NetworkMetricAnalyzer('brexit', db_conn)
-results_df = analyzer.analyze(('efficiency', 'density'), ('BBCDebate', ), 'retweet')
-analyzer.to_image().savefig('a.png')

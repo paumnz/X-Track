@@ -3,6 +3,7 @@ import { show_motto_analysis } from './motto_analysis.js';
 import { show_media_analysis } from './media_analysis.js';
 import { show_user_analysis } from './user_analysis.js';
 import { show_tweet_analysis } from './tweet_analysis.js';
+import { show_network_metric_analysis } from './network_metric_analysis.js';
 
 getSessionData()
 .then(sessionData => {
@@ -17,8 +18,11 @@ getSessionData()
     // // 3. User analysis
     // show_user_analysis(sessionData)
 
-    // 4. Tweet analysis
-    show_tweet_analysis(sessionData)
+    // // 4. Tweet analysis
+    // show_tweet_analysis(sessionData)
+
+    // 5. Network metric analysis
+    show_network_metric_analysis(sessionData)
 
     return sessionData
 })

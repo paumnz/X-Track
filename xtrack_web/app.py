@@ -5,16 +5,19 @@ Module to implement the back-end application that serves the front-end and resol
 
 import configparser
 import json
+from datetime import datetime
 from typing import Any, Dict, Tuple
 
 import plotly
 from flask import Flask, render_template, request, url_for, jsonify, session
 from flask_session import Session
+from pandas import DataFrame
 
 from xtrack_engine.database_connection.db_connector import DBConnector
 from xtrack_engine.motto_analysis.motto_analyzer import MottoAnalyzer
 from xtrack_engine.media_analysis.domain_analyzer import DomainAnalyzer
 from xtrack_engine.media_analysis.headline_analyzer import HeadlineAnalyzer
+from xtrack_engine.network_analysis.network_metric_analyzer import NetworkMetricAnalyzer
 from xtrack_engine.tweet_analysis.tweet_entity_analyzer import TweetEntityAnalyzer
 from xtrack_engine.tweet_analysis.tweet_creation_time_analyzer import TweetCreationTimeAnalyzer
 from xtrack_engine.tweet_analysis.tweet_sentiment_creation_time_analyzer import TweetSentimentCreationTimeAnalyzer
@@ -220,6 +223,57 @@ def _tweet_analysis(
     }
 
 
+def _prepare_network_metric_results(network_metric_df : DataFrame, metric_names : Tuple[str, ...]) -> Dict[str, Any]:
+    """
+    Functionn to prepare network metric results in the expected format by the front-end.
+
+    Args:
+        network_metric_df (DataFrame): the pandas DataFrame containing the network metrics results.
+        metric_names (Tuple[str, ...]): the name of the metrics that will be computed.
+    Returns:
+        A dictionary in the expected format by the front-end to show the results.
+    """
+    metric_analysis_results : Dict[str, Any] = {'x_values' : network_metric_df['date'].apply(lambda row: datetime.strftime(row, '%Y-%m-%d')).to_list(), 'y_values' : [], 'metrics' : metric_names}
+
+    for metric in metric_names:
+        metric_analysis_results['y_values'].append(network_metric_df[metric].to_list())
+
+    return metric_analysis_results
+
+
+def _network_metric_analysis(
+        campaigns : Tuple[str, ...],
+        hashtags : Tuple[str, ...],
+        db_conn : DBConnector,
+        network_metrics : Tuple[str, ...]
+    ) -> Dict[str, Any]:
+    """
+    Method to carry out the network metric analysis.
+
+    Args:
+        campaigns (Tuple[str, ...]): the campaign/s to be analyzed.
+        hashtags (Tuple[str, ...]): the hashtags with which to filter user activity.
+        db_conn (DBConnector): the database connector instance to be used.
+        network_metrics (Tuple[str, ...]): the network metrics to be computed.
+
+    Returns:
+        A dictionary with the network metric analysis results to be shown in the front-end.
+    """
+
+    # Step 1: Analyzing network metrics over time
+    retweet_network_metrics = NetworkMetricAnalyzer(campaigns, db_conn).analyze(network_metrics, hashtags, 'retweet')
+    reply_network_metrics = NetworkMetricAnalyzer(campaigns, db_conn).analyze(network_metrics, hashtags, 'reply')
+
+    # Step 2: Preparing results
+    retweet_network_analysis_results = _prepare_network_metric_results(retweet_network_metrics, network_metrics)
+    reply_network_analysis_results = _prepare_network_metric_results(reply_network_metrics, network_metrics)
+
+    return {
+        'retweet_network_metrics' : retweet_network_analysis_results,
+        'reply_network_metrics' : reply_network_analysis_results,
+    }
+
+
 @app.route('/analyze', methods=['POST'])
 def analyze_campaigns():
     """
@@ -231,6 +285,10 @@ def analyze_campaigns():
     campaigns = data.get('campaigns')
     hashtags = tuple(data.get('hashtags').split(', '))
     hashtags = None if len(hashtags) == 1 and hashtags[0] == '' else hashtags
+    language = data.get('language')
+    language = 'en' if language == '' or language is None else language
+    network_metrics = tuple(data.get('network_metrics').split(', '))
+    network_metrics = ('efficiency', 'density', 'modularity') if len(network_metrics) == 1 and network_metrics[0] == '' else network_metrics
 
     # Step 2: Resetting session results (if any)
     session['analysis_result'] = {}
@@ -243,7 +301,8 @@ def analyze_campaigns():
     # analysis_result['motto_analysis'] = _motto_analysis(campaigns, db_conn)
     # analysis_result['media_analysis'] = _media_analysis(campaigns, hashtags, db_conn)
     # analysis_result['user_analysis'] = _user_analysis(campaigns, hashtags, db_conn)
-    analysis_result['tweet_analysis'] = _tweet_analysis(campaigns, hashtags, db_conn)
+    # analysis_result['tweet_analysis'] = _tweet_analysis(campaigns, hashtags, db_conn)
+    analysis_result['network_metric_analysis'] = _network_metric_analysis(campaigns, hashtags, db_conn, network_metrics)
 
     session['analysis_result'] = analysis_result
 
