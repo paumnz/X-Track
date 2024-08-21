@@ -8,6 +8,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/result_styles.css') }}">
 </head>
@@ -160,21 +162,61 @@
 
         <!-- Section 5: Network metric analysis -->
         <div class="section">
-            <h2>Network Metric Analysis</h2>
+            <h2>Network Analysis</h2>
             <div class="xtrack-analysis-container">
                 <div class="canvas-box">
                     <h3>Retweet network</h3>
+                    <div id="cv_retweet_network_graph" style="height: 500px;"></div>
+                </div>
+            </div>
+            <div class="xtrack-analysis-container">
+                <div class="canvas-box">
+                    <h3>Reply network</h3>
+                    <div id="cv_reply_network_graph" style="height: 500px;"></div>
+                </div>
+            </div>
+            <div class="xtrack-analysis-container">
+                <div class="canvas-box">
+                    <h3>Retweet network metrics</h3>
                     <div class="xtrack-canvas-container">
-                        <canvas id="cv_retweet_network"></canvas>
+                        <canvas id="cv_retweet_network" style="max-height: 100%;"></canvas>
+                    </div>
+                </div>
+                <div class="canvas-box">
+                    <h3>Reply network metrics</h3>
+                    <div class="xtrack-canvas-container">
+                        <canvas id="cv_reply_network" style="max-height: 100%;"></canvas>
                     </div>
                 </div>
             </div>
             <br>
             <div class="xtrack-analysis-container">
+                
+            </div>
+        </div>
+
+        <!-- Section 6: Speech analysis -->
+        <div class="section">
+            <h2>Speech Analysis</h2>
+            <div class="xtrack-analysis-container">
                 <div class="canvas-box">
-                    <h3>Reply network</h3>
+                    <h3>Sentiment probability</h3>
                     <div class="xtrack-canvas-container">
-                        <canvas id="cv_reply_network"></canvas>
+                        <canvas id="cv_sentiment"></canvas>
+                    </div>
+                </div>
+                <div class="canvas-box">
+                    <h3>Emotions probability</h3>
+                    <div class="xtrack-canvas-container">
+                        <canvas id="cv_emotion"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="xtrack-analysis-container">
+                <div class="canvas-box">
+                    <h3>Written speech analysis with LIWC</h3>
+                    <div class="xtrack-canvas-container">
+                        <canvas id="cv_liwc"></canvas>
                     </div>
                 </div>
             </div>

@@ -302,10 +302,3 @@ class BotAnalyzer(Analyzer):
         self.logger.debug('Converted bot analysis results to image')
 
         return fig
-
-
-db_conn = DBConnector('../../config.ini')
-analyzer = BotAnalyzer('brexit', db_conn, '../../config.ini', 0)
-results_df = analyzer.analyze(None, ('WrongThenWrongNow', ))
-print(results_df)
-analyzer.to_image().savefig('a.png')

@@ -81,7 +81,6 @@ class RetweetNetworkGenerator(NetworkGenerator):
             params = {'campaigns' : tuple(self.campaigns), 'first_date' : first_date, 'last_date' : last_date, 'hashtags' : hashtags}
 
         network_df = self.db_connector.retrieve_table_from_sql(query, params)
-
         self.logger.debug(f'Retrieved retweet network from {first_date} to {last_date}')
 
         return network_df

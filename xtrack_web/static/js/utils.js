@@ -357,3 +357,114 @@ export function createTable(data, table_element) {
         tableBody.appendChild(row);
     });
 }
+
+
+export function plotGraph(edges, sentimentDict, activityDict, div_element) {
+    // Helper function to calculate color based on sentiment
+    function getColor(sentiment) {
+        const green = Math.round(255 * sentiment);
+        const red = Math.round(255 * (1 - sentiment));
+        return `rgb(${red}, ${green}, 0)`; // Generates a color from red to green
+    }
+
+    // Helper function to calculate size based on normalized activity
+    function getSize(activity) {
+        const minSize = 10;
+        const maxSize = 50;
+        // Scale activity between minSize and maxSize
+        return minSize + activity * (maxSize - minSize);
+    }
+
+    // Extract unique nodes from the edges and apply sentiment colors and activity sizes
+    var nodesSet = new Set();
+    edges.forEach(edge => {
+        nodesSet.add(edge.from);
+        nodesSet.add(edge.to);
+    });
+
+    // Convert Set to an array of node objects with sentiment-based colors and activity-based sizes
+    var nodes = Array.from(nodesSet).map(node => ({
+        id: node,
+        label: node,
+        color: getColor(sentimentDict[node] || 0.5), // Default to neutral color if no sentiment value
+        size: getSize(activityDict[node] || 0) // Default to smallest size if no activity value
+    }));
+
+    // Prepare the data for Vis.js
+    var data = {
+        nodes: new vis.DataSet(nodes),
+        edges: new vis.DataSet(edges.map(edge => ({
+            ...edge,
+            label: edge.label || '',  // Ensure the edge label is present
+            font: { align: 'middle' } // Align the label on the middle of the edge
+        })))
+    };
+
+    // Set the visualization options
+    var options = {
+        edges: {
+            arrows: 'to',
+            labelHighlightBold: true,
+            font: {
+                size: 12,
+                align: 'horizontal',
+                color: '#343434', // Set color for the edge labels
+                strokeWidth: 2, // Stroke around the label to make it more readable
+                strokeColor: '#ffffff' // White stroke for better contrast
+            },
+            color: {
+                color: '#848484',
+                highlight: '#848484',
+                hover: '#848484',
+                opacity: 1.0,
+            },
+            width: 2,
+            scaling: {
+                min: 1,
+                max: 10,
+                label: true,
+            },
+            smooth: true,
+        },
+        nodes: {
+            shape: 'dot',
+            font: {
+                size: 24,
+                color: '#ffffff',
+                face: 'arial', // Specify font face
+            },
+            borderWidth: 2,
+            shadow: true
+        },
+        layout: {
+            improvedLayout: true,
+        },
+        physics: {
+            enabled: true,
+            barnesHut: {
+                gravitationalConstant: -2000,
+                centralGravity: 0.5,
+                springLength: 200,
+                springConstant: 0.01,
+                damping: 0.1,
+                avoidOverlap: 0.1
+            },
+            maxVelocity: 10,
+            minVelocity: 0.1,
+            solver: 'barnesHut',
+            stabilization: {
+                enabled: true,
+                iterations: 1000,
+                updateInterval: 25,
+                onlyDynamicEdges: false,
+                fit: true
+            },
+            timestep: 0.5,
+            adaptiveTimestep: true
+        }
+    };
+
+    // Create the network graph
+    new vis.Network(div_element, data, options);
+}
+

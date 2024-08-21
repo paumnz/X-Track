@@ -517,7 +517,7 @@ class LIWCAnalyzer(Analyzer):
         return tweet_df
 
 
-    def analyze(self, hashtags : Tuple[str, ...] | None = None) -> str:
+    def analyze(self, hashtags : Tuple[str, ...] | None = None) -> DataFrame:
         """
         Method to carry out LIWC analysis in the given campaign/s of the XTRACK's engine.
 

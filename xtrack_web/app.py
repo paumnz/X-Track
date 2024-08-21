@@ -8,6 +8,7 @@ import json
 from datetime import datetime
 from typing import Any, Dict, Tuple
 
+import numpy as np
 import plotly
 from flask import Flask, render_template, request, url_for, jsonify, session
 from flask_session import Session
@@ -17,7 +18,11 @@ from xtrack_engine.database_connection.db_connector import DBConnector
 from xtrack_engine.motto_analysis.motto_analyzer import MottoAnalyzer
 from xtrack_engine.media_analysis.domain_analyzer import DomainAnalyzer
 from xtrack_engine.media_analysis.headline_analyzer import HeadlineAnalyzer
+from xtrack_engine.network_analysis.network_analyzer import NetworkAnalyzer
 from xtrack_engine.network_analysis.network_metric_analyzer import NetworkMetricAnalyzer
+from xtrack_engine.sentiment_analysis.emotion_analyzer import EmotionAnalyzer
+from xtrack_engine.sentiment_analysis.liwc_analyzer import LIWCAnalyzer
+from xtrack_engine.sentiment_analysis.sentiment_analyzer import SentimentAnalyzer
 from xtrack_engine.tweet_analysis.tweet_entity_analyzer import TweetEntityAnalyzer
 from xtrack_engine.tweet_analysis.tweet_creation_time_analyzer import TweetCreationTimeAnalyzer
 from xtrack_engine.tweet_analysis.tweet_sentiment_creation_time_analyzer import TweetSentimentCreationTimeAnalyzer
@@ -241,6 +246,53 @@ def _prepare_network_metric_results(network_metric_df : DataFrame, metric_names 
     return metric_analysis_results
 
 
+def _prepare_network_results(network_df : DataFrame) -> Dict[str, Any]:
+    """
+    Function to prepare network data in the expected format by the front-end.
+
+    Args:
+        network_df (DataFrame): the DataFrame with the network analysis results.
+
+    Returns:
+        The given network in the front-end's format.
+    """
+    network_edge_results = []
+    sentiment_dict_results = {}
+    activity_dict_results = {}
+
+    # Step 1: Preparing the edges
+    for _, row in network_df.iterrows():
+        network_edge_results.append(
+            {
+                'from' : row['source'],
+                'to' : row['target'],
+                'value' : row['weight']
+            }
+        )
+
+    # Step 2: Preparing the sentiment dictionary
+    source_sentiment_df = network_df[['source', 'source_sentiment']]
+    target_sentiment_df = network_df[['target', 'target_sentiment']]
+    sentiment_data = np.vstack([source_sentiment_df.values, target_sentiment_df.values])
+
+    for row in sentiment_data:
+        sentiment_dict_results[str(row[0])] = float(row[1])
+
+    # Step 3: Preparing the activity dictionary
+    source_activity_df = network_df[['source', 'source_activity']]
+    target_activity_df = network_df[['target', 'target_activity']]
+    activity_data = np.vstack([source_activity_df.values, target_activity_df.values])
+
+    for row in activity_data:
+        activity_dict_results[str(row[0])] = float(row[1])
+
+    return {
+        'edges' : network_edge_results,
+        'sentiment' : sentiment_dict_results,
+        'activity' : activity_dict_results
+    }
+
+
 def _network_metric_analysis(
         campaigns : Tuple[str, ...],
         hashtags : Tuple[str, ...],
@@ -265,12 +317,87 @@ def _network_metric_analysis(
     reply_network_metrics = NetworkMetricAnalyzer(campaigns, db_conn).analyze(network_metrics, hashtags, 'reply')
 
     # Step 2: Preparing results
-    retweet_network_analysis_results = _prepare_network_metric_results(retweet_network_metrics, network_metrics)
-    reply_network_analysis_results = _prepare_network_metric_results(reply_network_metrics, network_metrics)
+    retweet_network_metrics_analysis_results = _prepare_network_metric_results(retweet_network_metrics, network_metrics)
+    reply_network_metrics_analysis_results = _prepare_network_metric_results(reply_network_metrics, network_metrics)
+
+    # Step 3: Creating both networks for plotting
+    retweet_network_df = NetworkAnalyzer(campaigns, db_conn).analyze(hashtags, 'retweet')
+    retweet_network_analysis_results = _prepare_network_results(retweet_network_df)
+    reply_network_df = NetworkAnalyzer(campaigns, db_conn).analyze(hashtags, 'reply')
+    reply_network_analysis_results = _prepare_network_results(reply_network_df)
 
     return {
-        'retweet_network_metrics' : retweet_network_analysis_results,
-        'reply_network_metrics' : reply_network_analysis_results,
+        'retweet_network_metrics' : retweet_network_metrics_analysis_results,
+        'reply_network_metrics' : reply_network_metrics_analysis_results,
+        'retweet_network' : retweet_network_analysis_results,
+        'reply_network' : reply_network_analysis_results,
+    }
+
+
+def _prepare_speech_analysis_results(
+        speech_df : DataFrame,
+        category_column : str,
+        value_column : str,
+        top_k : int = 10
+    ) -> Dict[str, Any]:
+    """
+    Function to prepare the speech analysis results into the format expected at the front-end.
+
+    Args:
+        speech_df (DataFrame): the Pandas DataFrame containing the speech analysis results.
+        category_column (str): the column holding each of the categories analyzed.
+        value_column (str): the column holding the values of each of the categories.
+        top_k (int): the number of most frequently used speech categories.
+
+    Returns:
+        A dictionary in the format expected by the front-end.
+    """
+    labels = speech_df[category_column].to_list()[:top_k]
+    values = speech_df[value_column].to_list()[:top_k]
+
+    return {
+        'labels' : labels,
+        'data' : values,
+    }
+
+
+def _speech_analysis(
+        campaigns : Tuple[str, ...],
+        hashtags : Tuple[str, ...],
+        db_conn : DBConnector,
+        language : str
+    ) -> Dict[str, Any]:
+    """
+    Method to carry out the speech analysis
+
+    Args:
+        campaigns (Tuple[str, ...]): the campaign/s to be analyzed.
+        hashtags (Tuple[str, ...]): the hashtags with which to filter user activity.
+        db_conn (DBConnector): the database connector instance to be used.
+        language (str): the language to be used for sentiment and emotion detection.
+
+    Returns:
+        A dictionary with the media outlet analysis results to be shown in the front-end.
+    """
+
+    # Step 1: Sentiment analysis
+    sentiment_df = SentimentAnalyzer(campaigns, db_conn, language = language).analyze(hashtags)
+    sentiment_df = sentiment_df.sort_values(by = 'probability', ascending = False)
+    sentiment_analysis = _prepare_speech_analysis_results(sentiment_df, 'sentiment', 'probability')
+
+    # Step 2: Emotion analysis
+    emotion_df = EmotionAnalyzer(campaigns, db_conn, language = language).analyze(hashtags)
+    emotion_df = emotion_df.sort_values(by = 'probability', ascending = False)
+    emotion_analysis = _prepare_speech_analysis_results(emotion_df, 'emotion', 'probability')
+
+    # # Step 3: Emotion analysis
+    # liwc_df = LIWCAnalyzer(campaigns, db_conn, liwc_dict_filepath = config_parser.get('liwc', 'liwc_dict_filepath')).analyze(hashtags)
+    # liwc_df = liwc_df.sort_values(by = 'frequency', ascending = False)
+    # emotion_analysis = _prepare_speech_analysis_results(emotion_df, 'category', 'frequency')
+
+    return {
+        'sentiment' : sentiment_analysis,
+        'emotion' : emotion_analysis,
     }
 
 
@@ -303,6 +430,7 @@ def analyze_campaigns():
     # analysis_result['user_analysis'] = _user_analysis(campaigns, hashtags, db_conn)
     # analysis_result['tweet_analysis'] = _tweet_analysis(campaigns, hashtags, db_conn)
     analysis_result['network_metric_analysis'] = _network_metric_analysis(campaigns, hashtags, db_conn, network_metrics)
+    # analysis_result['speech_analysis'] = _speech_analysis(campaigns, hashtags, db_conn, language)
 
     session['analysis_result'] = analysis_result
 
