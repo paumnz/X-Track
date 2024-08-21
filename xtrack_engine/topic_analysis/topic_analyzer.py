@@ -14,7 +14,10 @@ import gensim
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import spacy
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
 from nltk.corpus import stopwords
 from sklearn.manifold import TSNE
@@ -443,12 +446,62 @@ class TopicAnalyzer(Analyzer):
         return fig
 
 
+    # def __to_wordcloud(
+    #         self,
+    #         width : float = 10,
+    #         height : float = 7,
+    #         title : str = 'Topic wordcloud',
+    #     ) -> Figure:
+    #     """
+    #     Method to convert the TopicAnalyzer results into a figure.
+
+    #     Args:
+    #         width: the width of the image to be created.
+    #         height: the height of the image to be created.
+    #         title: the title to be used.
+
+    #     Returns:
+    #         The figure containing the results of the TopicAnalyzer.
+    #     """
+    #     self.logger.debug('Converting word cloud analysis results to image')
+
+    #     cloud = WordCloud(
+    #         stopwords = STOPWORDS,
+    #         background_color = 'white',
+    #         width = 2500,
+    #         height = 1800,
+    #         max_words = 10,
+    #         colormap = 'tab10',
+    #         prefer_horizontal = 1.0
+    #     )
+
+    #     topics = self.lda_model.show_topics(formatted=False)
+    #     fig, axes = plt.subplots(2, 2, figsize=(10, 10), sharex=True, sharey=True)
+
+    #     for i, ax in enumerate(axes.flatten()):
+    #         fig.add_subplot(ax)
+    #         topic_words = dict(topics[i][1])
+    #         cloud.generate_from_frequencies(topic_words, max_font_size=300)
+    #         plt.gca().imshow(cloud)
+    #         plt.gca().set_title('Topic ' + str(i), fontdict=dict(size=16))
+    #         plt.gca().axis('off')
+
+    #     plt.subplots_adjust(wspace=0, hspace=0)
+    #     plt.axis('off')
+    #     plt.margins(x=0, y=0)
+    #     plt.tight_layout()
+
+    #     self.logger.debug('Converted word cloud analysis results to image')
+
+    #     return fig
+
+
     def __to_wordcloud(
-            self,
-            width : float = 10,
-            height : float = 7,
-            title : str = 'Topic wordcloud',
-        ) -> Figure:
+        self,
+        width: float = 10,
+        height: float = 7,
+        title: str = '',
+    ) -> go.Figure:
         """
         Method to convert the TopicAnalyzer results into a figure.
 
@@ -462,31 +515,86 @@ class TopicAnalyzer(Analyzer):
         """
         self.logger.debug('Converting word cloud analysis results to image')
 
-        cloud = WordCloud(
-            stopwords = STOPWORDS,
-            background_color = 'white',
-            width = 2500,
-            height = 1800,
-            max_words = 10,
-            colormap = 'tab10',
-            prefer_horizontal = 1.0
-        )
+        # Updated color maps with more variation and a purple option
+        color_maps = [
+            LinearSegmentedColormap.from_list("reddish", ["#FF6666", "#CC0000", "#990000"]),
+            LinearSegmentedColormap.from_list("greenish", ["#66FF66", "#00CC00", "#009900"]),
+            LinearSegmentedColormap.from_list("purplish", ["#DDA0DD", "#BA55D3", "#8A2BE2"]),
+            LinearSegmentedColormap.from_list("yellowish", ["#FFFF66", "#FFCC00", "#FF9900"]),
+        ]
 
         topics = self.lda_model.show_topics(formatted=False)
-        fig, axes = plt.subplots(2, 2, figsize=(10, 10), sharex=True, sharey=True)
+        num_topics = len(topics)
 
-        for i, ax in enumerate(axes.flatten()):
-            fig.add_subplot(ax)
-            topic_words = dict(topics[i][1])
-            cloud.generate_from_frequencies(topic_words, max_font_size=300)
-            plt.gca().imshow(cloud)
-            plt.gca().set_title('Topic ' + str(i), fontdict=dict(size=16))
-            plt.gca().axis('off')
+        fig = make_subplots(
+            rows=(num_topics // 2) + 1, 
+            cols=2,
+            horizontal_spacing=0.0,  # No horizontal spacing
+            vertical_spacing=0.15,  # Increased spacing between rows
+        )
 
-        plt.subplots_adjust(wspace=0, hspace=0)
-        plt.axis('off')
-        plt.margins(x=0, y=0)
-        plt.tight_layout()
+        for idx_topic, topic in enumerate(topics):
+            _, topic_bow = topic
+
+            cloud = WordCloud(
+                stopwords=STOPWORDS,
+                background_color='#1a1a2e',  # Set background color to #1a1a2e
+                mode="RGBA",
+                width=700,
+                height=500,
+                max_words=10,
+                colormap=color_maps[idx_topic % len(color_maps)],
+                prefer_horizontal=1.0
+            )
+
+            cloud_i = cloud.generate_from_frequencies(dict(topic_bow), max_font_size=300)
+            wordcloud_array = cloud_i.to_array()
+
+            fig.add_trace(
+                go.Image(z=wordcloud_array),
+                row=(idx_topic // 2) + 1,
+                col=(idx_topic % 2) + 1
+            )
+
+            # Hide tick labels and grid lines
+            fig.update_xaxes(
+                showticklabels=False, 
+                showgrid=False, 
+                zeroline=False, 
+                row=(idx_topic // 2) + 1, 
+                col=(idx_topic % 2) + 1
+            )
+            fig.update_yaxes(
+                showticklabels=False, 
+                showgrid=False, 
+                zeroline=False, 
+                row=(idx_topic // 2) + 1, 
+                col=(idx_topic % 2) + 1
+            )
+
+            # Add title to the subplot with increased font size and color
+            fig.add_annotation(
+                text=f"Topic {idx_topic}",
+                xref="x domain",
+                yref="y domain",
+                x=0.5,
+                y=1.25,  # Increased the y value for more spacing
+                showarrow=False,
+                font=dict(size=24, color="#4ecca3"),  # Adjust font size and color
+                row=(idx_topic // 2) + 1,
+                col=(idx_topic % 2) + 1
+            )
+
+        # Update layout with a dark background and no margins except top
+        fig.update_layout(
+            title=title,
+            height=height * 80,
+            width=width * 80,
+            plot_bgcolor='#1a1a2e',
+            paper_bgcolor='#1a1a2e',
+            showlegend=False,
+            margin=dict(l=0, r=0, t=200, b=0)  # Set margins to zero except top
+        )
 
         self.logger.debug('Converted word cloud analysis results to image')
 
@@ -503,7 +611,7 @@ class TopicAnalyzer(Analyzer):
             title : str = 'Tweet impact distribution per topic',
             grid : bool = True,
             x_ticks_rotation : float = 0
-        ) -> Figure:
+        ) -> go.Figure:
         """
         Method to convert the TopicAnalyzer results into a figure.
 

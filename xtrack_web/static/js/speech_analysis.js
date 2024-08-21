@@ -12,4 +12,5 @@ export function show_speech_analysis(sessionData) {
     // Plotting the information
     create_bar_plot(sessionData.speech_analysis['sentiment'], sentimentCanvas)
     create_bar_plot(sessionData.speech_analysis['emotion'], emotionCanvas)
+    // create_bar_plot(sessionData.speech_analysis['liwc'], liwcCanvas)
 }

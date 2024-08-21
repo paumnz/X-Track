@@ -176,7 +176,7 @@ class BotAnalyzer(Analyzer):
 
         if hashtags is None:
             query = """
-                SELECT u.user_id, ub.bot_score, ub.bot
+                SELECT DISTINCT u.user_id, ub.bot_score, ub.bot
                 FROM 
                     tweet t
                     INNER JOIN user u ON u.id = t.author_id
@@ -187,7 +187,7 @@ class BotAnalyzer(Analyzer):
             params = {'campaigns': tuple(self.campaigns)}
         else:
             query = """
-                SELECT u.user_id, ub.bot_score, ub.bot
+                SELECT DISTINCT u.user_id, ub.bot_score, ub.bot
                 FROM 
                     tweet t
                     INNER JOIN user u ON u.id = t.author_id
@@ -241,7 +241,7 @@ class BotAnalyzer(Analyzer):
         # Step 3: Retrieving bot analysis
         self.analysis_results : DataFrame = self.__retrieve_bot_analysis(hashtags)
 
-        self.logger.debug(f'Applyied bot detection on the given campaigns and hashtags')
+        self.logger.debug(f'Applied bot detection on the given campaigns and hashtags')
 
         return self.analysis_results
 

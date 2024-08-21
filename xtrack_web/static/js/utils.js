@@ -268,7 +268,17 @@ export function create_plotly_figure(title, plotly_data, div_element_id, height 
     };
 
 
-    Plotly.newPlot(div_element_id, plotly_data.data, plotlyLayout, config);
+    Plotly.newPlot(div_element_id, plotly_data.data, plotly_data.layout, config);
+}
+
+
+export function create_plotly_figure_subplots(title, plotly_data, div_element_id, height = 500, hover_mode = true) {
+    const config = {
+        responsive: true  // Ensure the chart resizes with the window or container
+    };
+
+    // Use the plotly_data.layout to ensure that subplots are properly configured
+    Plotly.newPlot(div_element_id, plotly_data.data, plotly_data.layout, config);
 }
 
 

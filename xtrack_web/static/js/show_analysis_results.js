@@ -5,6 +5,7 @@ import { show_user_analysis } from './user_analysis.js';
 import { show_tweet_analysis } from './tweet_analysis.js';
 import { show_network_metric_analysis } from './network_metric_analysis.js';
 import { show_speech_analysis } from './speech_analysis.js';
+import { show_topic_analysis } from './topic_analysis.js';
 
 getSessionData()
 .then(sessionData => {
@@ -27,6 +28,9 @@ getSessionData()
 
     // // 6. Speech analysis
     // show_speech_analysis(sessionData)
+
+    // // 7. Topic analysis
+    // show_topic_analysis(sessionData)
 
     return sessionData
 })

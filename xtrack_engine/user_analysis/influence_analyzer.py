@@ -38,7 +38,7 @@ class InfluenceAnalyzer(Analyzer):
         self.campaigns : Tuple[str, ...] = campaigns if type(campaigns) == tuple else (campaigns, )
         self.db_connector : DBConnector = db_connector
         self.retweet_network_generator : RetweetNetworkGenerator = RetweetNetworkGenerator(campaigns, db_connector, log_level)
-        self.reply_network_generator : RetweetNetworkGenerator = RetweetNetworkGenerator(campaigns, db_connector, log_level)
+        self.reply_network_generator : ReplyNetworkGenerator = ReplyNetworkGenerator(campaigns, db_connector, log_level)
 
 
     def __calculate_betweenness_centrality(self, network : nx.Graph, top_k : int) -> Tuple[Any, ...]:
@@ -156,13 +156,18 @@ class InfluenceAnalyzer(Analyzer):
         """
         self.logger.debug(f'Calculating top-{top_k} most influential users by all centrality measures')
 
+        retweet_min_threshold = 0 if hashtags is not None else 3
+
         match network_type:
             case 'retweet':
-                network : nx.DiGraph = self.retweet_network_generator.generate_network(hashtags = hashtags)
+                network : nx.DiGraph = self.retweet_network_generator.generate_network(hashtags = hashtags, min_threshold = retweet_min_threshold)
             case 'reply':
                 network : nx.DiGraph = self.reply_network_generator.generate_network(hashtags = hashtags)
             case _:
                 raise IllegalAnalysisConfigError(f'Illegal network_type configuration for InfluenceAnalyzer: {network_type}')
+
+        isolated_nodes = [node for node in network.nodes() if network.in_degree(node) == 0 and network.out_degree(node) == 0]
+        network.remove_nodes_from(isolated_nodes)
 
         # Step 1: Calculating the top-K most influential users by individual per centrality measure
         bc_ranking = self.__calculate_betweenness_centrality(network, top_k)

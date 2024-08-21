@@ -14,6 +14,7 @@ from flask import Flask, render_template, request, url_for, jsonify, session
 from flask_session import Session
 from pandas import DataFrame
 
+from xtrack_engine.bot_analysis.bot_analyzer import BotAnalyzer
 from xtrack_engine.database_connection.db_connector import DBConnector
 from xtrack_engine.motto_analysis.motto_analyzer import MottoAnalyzer
 from xtrack_engine.media_analysis.domain_analyzer import DomainAnalyzer
@@ -23,6 +24,7 @@ from xtrack_engine.network_analysis.network_metric_analyzer import NetworkMetric
 from xtrack_engine.sentiment_analysis.emotion_analyzer import EmotionAnalyzer
 from xtrack_engine.sentiment_analysis.liwc_analyzer import LIWCAnalyzer
 from xtrack_engine.sentiment_analysis.sentiment_analyzer import SentimentAnalyzer
+from xtrack_engine.topic_analysis.topic_analyzer import TopicAnalyzer
 from xtrack_engine.tweet_analysis.tweet_entity_analyzer import TweetEntityAnalyzer
 from xtrack_engine.tweet_analysis.tweet_creation_time_analyzer import TweetCreationTimeAnalyzer
 from xtrack_engine.tweet_analysis.tweet_sentiment_creation_time_analyzer import TweetSentimentCreationTimeAnalyzer
@@ -144,6 +146,9 @@ def _user_analysis(
     # Step 2: Influential users analysis
     influential_users = MultiCriteriaUserAnalyzer(campaigns, db_conn).analyze(top_k, hashtags)
 
+    # Step 3: Bot analysis
+    bot_analysis = BotAnalyzer(campaigns, db_conn, XTRACK_CONFIGURATION_FILEPATH).analyze(hashtags = hashtags, top_k = 0)
+
     return {
         'account_creation' : {
             'x_values' : [x_value for x_value in account_creation_analysis['month']],
@@ -152,6 +157,10 @@ def _user_analysis(
         'influential_users' : {
             'labels' : [label for label, _ in influential_users],
             'data' : [label_usage for _, label_usage in influential_users]
+        },
+        'bot_users' : {
+            'labels' : [label for label in bot_analysis['bot']],
+            'values' : [frequency for frequency in bot_analysis['frequency']]
         }
     }
 
@@ -401,6 +410,35 @@ def _speech_analysis(
     }
 
 
+def _topic_analysis(
+        campaigns : Tuple[str, ...],
+        hashtags : Tuple[str, ...],
+        db_conn : DBConnector,
+        language : str
+    ) -> Dict[str, Any]:
+    """
+    Method to carry out the topic analysis
+
+    Args:
+        campaigns (Tuple[str, ...]): the campaign/s to be analyzed.
+        hashtags (Tuple[str, ...]): the hashtags with which to filter user activity.
+        db_conn (DBConnector): the database connector instance to be used.
+        language (str): the language to be used for the topic analysis.
+
+    Returns:
+        A dictionary with the topic analysis results to be shown in the front-end.
+    """
+    topic_analyzer = TopicAnalyzer(campaigns, db_conn, language = language)
+    topic_analyzer.analyze(hashtags)
+
+    # Step 1: Plotting the wordcloud per topic
+    wordcloud_fig = topic_analyzer.to_image('wordcloud')
+
+    return {
+        'topic_wordcloud' : json.dumps(wordcloud_fig, cls = plotly.utils.PlotlyJSONEncoder),
+    }
+
+
 @app.route('/analyze', methods=['POST'])
 def analyze_campaigns():
     """
@@ -425,12 +463,13 @@ def analyze_campaigns():
     analysis_result = {}
     db_conn = DBConnector(XTRACK_CONFIGURATION_FILEPATH)
 
+    # analysis_result['speech_analysis'] = _speech_analysis(campaigns, hashtags, db_conn, language) # Must go first
     # analysis_result['motto_analysis'] = _motto_analysis(campaigns, db_conn)
     # analysis_result['media_analysis'] = _media_analysis(campaigns, hashtags, db_conn)
     # analysis_result['user_analysis'] = _user_analysis(campaigns, hashtags, db_conn)
     # analysis_result['tweet_analysis'] = _tweet_analysis(campaigns, hashtags, db_conn)
     analysis_result['network_metric_analysis'] = _network_metric_analysis(campaigns, hashtags, db_conn, network_metrics)
-    # analysis_result['speech_analysis'] = _speech_analysis(campaigns, hashtags, db_conn, language)
+    # analysis_result['topic_analysis'] = _topic_analysis(campaigns, hashtags, db_conn, language)
 
     session['analysis_result'] = analysis_result
 

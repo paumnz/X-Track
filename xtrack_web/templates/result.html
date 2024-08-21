@@ -70,6 +70,9 @@
                         <canvas id="cv_account_creation"></canvas>
                     </div>
                 </div>
+            </div>
+            <br>
+            <div class="xtrack-analysis-container">
                 <div class="canvas-box">
                     <h3 class="tooltip">
                         Most influential users
@@ -85,6 +88,12 @@
                     </h3>
                     <div class="xtrack-canvas-container">
                         <canvas id="cv_influential_users"></canvas>
+                    </div>
+                </div>
+                <div class="canvas-box">
+                    <h3 class="tooltip">Bot analysis<span class="tooltip-text">The analysis might be restricted to a limited number of users due to the Botometer-X API limits.</span></h3>
+                    <div class="xtrack-canvas-container">
+                        <canvas id="cv_bot_users" style="width: 80%;"></canvas>
                     </div>
                 </div>
             </div>
@@ -217,6 +226,19 @@
                     <h3>Written speech analysis with LIWC</h3>
                     <div class="xtrack-canvas-container">
                         <canvas id="cv_liwc"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 7: Topic analysis -->
+        <div class="section">
+            <h2>Topic Analysis</h2>
+            <div class="xtrack-analysis-container">
+                <div class="canvas-box">
+                    <h3>Wordclouds per topic</h3>
+                    <div class="xtrack-canvas-container">
+                        <div id="cv_topic_wordcloud"></div>
                     </div>
                 </div>
             </div>
