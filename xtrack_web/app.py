@@ -434,8 +434,20 @@ def _topic_analysis(
     # Step 1: Plotting the wordcloud per topic
     wordcloud_fig = topic_analyzer.to_image('wordcloud')
 
+    # Step 2: Plotting the 2D T-SNE
+    tsne_fig = topic_analyzer.to_image('t-sne')
+
+    # Step 3: Retrieving topic impact analysis
+    topic_impact_df = topic_analyzer.tweet_df.groupby('topic')['impact'].count().sort_values(ascending=False)[:20].to_frame().reset_index()
+    topic_impact_df['topic'] = topic_impact_df['topic'].astype(str)
+
     return {
+        't_sne' : json.dumps(tsne_fig, cls = plotly.utils.PlotlyJSONEncoder),
         'topic_wordcloud' : json.dumps(wordcloud_fig, cls = plotly.utils.PlotlyJSONEncoder),
+        'topic_impact' : {
+            'labels' : [f'Topic {topic}' for topic in topic_impact_df['topic']],
+            'data' : [impact_value for impact_value in topic_impact_df['impact']]
+        }
     }
 
 
@@ -468,8 +480,8 @@ def analyze_campaigns():
     # analysis_result['media_analysis'] = _media_analysis(campaigns, hashtags, db_conn)
     # analysis_result['user_analysis'] = _user_analysis(campaigns, hashtags, db_conn)
     # analysis_result['tweet_analysis'] = _tweet_analysis(campaigns, hashtags, db_conn)
-    analysis_result['network_metric_analysis'] = _network_metric_analysis(campaigns, hashtags, db_conn, network_metrics)
-    # analysis_result['topic_analysis'] = _topic_analysis(campaigns, hashtags, db_conn, language)
+    # analysis_result['network_metric_analysis'] = _network_metric_analysis(campaigns, hashtags, db_conn, network_metrics)
+    analysis_result['topic_analysis'] = _topic_analysis(campaigns, hashtags, db_conn, language)
 
     session['analysis_result'] = analysis_result
 

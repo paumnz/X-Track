@@ -378,6 +378,64 @@ class Visualizer(LoggableEntity):
         return fig
 
 
+    # def create_scatter_plot(
+    #         self,
+    #         data : DataFrame,
+    #         x_axis_column_name : str,
+    #         y_axis_column_name : str,
+    #         category_column_name : str,
+    #         width : float = 10,
+    #         height : float = 7,
+    #         x_axis_label : str = 'X axis',
+    #         y_axis_label : str = 'Y axis',
+    #         title : str = '',
+    #         grid : bool = True,
+    #         legend : bool = True,
+    #         x_ticks_rotation : float = 0,
+    #     ) -> go.Figure:
+    #     """
+    #     Method to create a line plot given the data.
+
+    #     Args:
+    #         data: the Pandas DataFrame containing the information to visualize.
+    #         x_axis_column_name: the name of the column to be used for the X-axis.
+    #         y_axis_column_name: the name of the column to be used for the Y-axis.
+    #         category_column_name: the name of the column to be used for the category separation.
+    #         width: the width of the image to be created.
+    #         height: the height of the image to be created.
+    #         x_axis_label: the label to be used for the X-axis.
+    #         y_axis_label: the label to be used for the Y-axis.
+    #         title: the title to be used.
+    #         grid: a flag that indicates whether the figure should contain a grid or not.
+    #         legend: a flag that indicates whether the figure should contain a legend or not.
+    #         x_ticks_rotation: the rotation degrees of the X-axis ticks.
+
+    #     Returns:
+    #         A matplotlib figure containing the line plot of the given data.
+    #     """
+    #     self.logger.debug('Creating scatter plot')
+
+    #     fig = plt.figure(figsize = (width, height))
+
+    #     for category in data[category_column_name].unique():
+    #         data_subplot = data[data[category_column_name] == category]
+    #         plt.scatter(data_subplot[x_axis_column_name], data_subplot[y_axis_column_name], label = category)
+
+    #     plt.xlabel(x_axis_label)
+    #     plt.ylabel(y_axis_label)
+    #     plt.title(title)
+    #     plt.grid(grid)
+    #     plt.xticks(rotation = x_ticks_rotation)
+
+    #     if legend:
+    #         plt.legend()
+    #     plt.tight_layout()
+
+    #     self.logger.debug('Created scatter plot')
+
+    #     return fig
+
+
     def create_scatter_plot(
             self,
             data : DataFrame,
@@ -392,7 +450,7 @@ class Visualizer(LoggableEntity):
             grid : bool = True,
             legend : bool = True,
             x_ticks_rotation : float = 0,
-        ) -> Figure:
+        ) -> go.Figure:
         """
         Method to create a line plot given the data.
 
@@ -415,21 +473,19 @@ class Visualizer(LoggableEntity):
         """
         self.logger.debug('Creating scatter plot')
 
-        fig = plt.figure(figsize = (width, height))
+        fig = px.scatter(data, x = x_axis_column_name, y = y_axis_column_name, color = category_column_name, title = title, width = 500, height = 300)
 
-        for category in data[category_column_name].unique():
-            data_subplot = data[data[category_column_name] == category]
-            plt.scatter(data_subplot[x_axis_column_name], data_subplot[y_axis_column_name], label = category)
-
-        plt.xlabel(x_axis_label)
-        plt.ylabel(y_axis_label)
-        plt.title(title)
-        plt.grid(grid)
-        plt.xticks(rotation = x_ticks_rotation)
-
-        if legend:
-            plt.legend()
-        plt.tight_layout()
+        fig.update_layout(
+            xaxis_title = x_axis_label,
+            yaxis_title = y_axis_label,
+            xaxis_tickangle = x_ticks_rotation,
+            xaxis_showgrid = True,
+            yaxis_showgrid = True,
+            showlegend = legend,
+            plot_bgcolor='#1a1a2e',
+            paper_bgcolor='#1a1a2e',
+            font_color = 'white'
+        )
 
         self.logger.debug('Created scatter plot')
 
