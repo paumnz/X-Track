@@ -61,20 +61,21 @@ def serve_frontend():
     return render_template('index.html')
 
 
-def _motto_analysis(campaigns : Tuple[str, ...], db_conn : DBConnector) -> Dict[str, Any]:
+def _motto_analysis(campaigns : Tuple[str, ...], db_conn : DBConnector, campaign_analysis_id : int) -> Dict[str, Any]:
     """
     Method to carry out the motto analysis
 
     Args:
         campaigns (Tuple[str, ...]): the campaign/s to be analyzed.
-        db_conn (DBConnector): the database connector instance to be used
+        db_conn (DBConnector): the database connector instance to be used.
+        campaign_analysis_id (int): the identifier to use for retrieving/storing the analysis results.
 
     Returns:
         A dictionary with the motto analysis results to be shown in the front-end.
     """
-    top_k_mottos = MottoAnalyzer(campaigns, db_conn).analyze('both')
-    top_k_negative_mottos = MottoAnalyzer(campaigns, db_conn).analyze('negative')
-    top_k_positive_mottos = MottoAnalyzer(campaigns, db_conn).analyze('positive')
+    top_k_mottos = MottoAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {'sentiment' : 'both'}, {'sentiment' : 'both', 'top_k' : 10})
+    top_k_negative_mottos = MottoAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {'sentiment' : 'negative'}, {'sentiment' : 'negative', 'top_k' : 10})
+    top_k_positive_mottos = MottoAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {'sentiment' : 'positive'}, {'sentiment' : 'positive', 'top_k' : 10})
 
     return {
         'all' : {
@@ -92,20 +93,26 @@ def _motto_analysis(campaigns : Tuple[str, ...], db_conn : DBConnector) -> Dict[
     }
 
 
-def _media_analysis(campaigns : Tuple[str, ...], hashtags : Tuple[str, ...], db_conn : DBConnector) -> Dict[str, Any]:
+def _media_analysis(
+        campaigns : Tuple[str, ...],
+        hashtags : Tuple[str, ...],
+        db_conn : DBConnector,
+        campaign_analysis_id : int
+    ) -> Dict[str, Any]:
     """
     Method to carry out the media outlet analysis
 
     Args:
         campaigns (Tuple[str, ...]): the campaign/s to be analyzed.
         hashtags (Tuple[str, ...]): the hashtags with which to filter user activity.
-        db_conn (DBConnector): the database connector instance to be used
+        db_conn (DBConnector): the database connector instance to be used.
+        campaign_analysis_id (int): the identifier to use for retrieving/storing the analysis results.
 
     Returns:
         A dictionary with the media outlet analysis results to be shown in the front-end.
     """
-    top_k_domains = DomainAnalyzer(campaigns, db_conn).analyze(10, hashtags)
-    top_k_headlines = HeadlineAnalyzer(campaigns, db_conn).analyze(10, hashtags)
+    top_k_domains = DomainAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, new_computation_kwargs = {'top_k' : 10, 'hashtags' : hashtags})
+    top_k_headlines = HeadlineAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, new_computation_kwargs = {'top_k' : 10, 'hashtags' : hashtags})
 
     return {
         'domains' : {
@@ -460,7 +467,7 @@ def analyze_campaigns():
     # Step 1: Retrieving POST request data
     data = request.get_json()
     campaigns = data.get('campaigns')
-    hashtags = tuple(data.get('hashtags').split(', '))
+    hashtags = tuple(data.get('hashtags').replace(' ', '').split(','))
     hashtags = None if len(hashtags) == 1 and hashtags[0] == '' else hashtags
     language = data.get('language')
     language = 'en' if language == '' or language is None else language
@@ -470,22 +477,27 @@ def analyze_campaigns():
     # Step 2: Resetting session results (if any)
     session['analysis_result'] = {}
 
-    # Step 3: Applying an analysis
-
-    analysis_result = {}
+    # Step 3: Preparing the campaign analysis results (in case we can avoid computations)
     db_conn = DBConnector(XTRACK_CONFIGURATION_FILEPATH)
 
+    campaign_analysis_stored_results = db_conn.check_existing_results(campaigns, hashtags)
+    if not campaign_analysis_stored_results[0]:
+        db_conn.insert_new_results_row(campaign_analysis_stored_results[1], campaigns, hashtags)
+
+    # Step 4: Applying an analysis
+    analysis_result = {}
+
     # analysis_result['speech_analysis'] = _speech_analysis(campaigns, hashtags, db_conn, language) # Must go first
-    # analysis_result['motto_analysis'] = _motto_analysis(campaigns, db_conn)
-    # analysis_result['media_analysis'] = _media_analysis(campaigns, hashtags, db_conn)
+    analysis_result['motto_analysis'] = _motto_analysis(campaigns, db_conn, campaign_analysis_stored_results[1])
+    analysis_result['media_analysis'] = _media_analysis(campaigns, hashtags, db_conn, campaign_analysis_stored_results[1])
     # analysis_result['user_analysis'] = _user_analysis(campaigns, hashtags, db_conn)
     # analysis_result['tweet_analysis'] = _tweet_analysis(campaigns, hashtags, db_conn)
     # analysis_result['network_metric_analysis'] = _network_metric_analysis(campaigns, hashtags, db_conn, network_metrics)
-    analysis_result['topic_analysis'] = _topic_analysis(campaigns, hashtags, db_conn, language)
+    # analysis_result['topic_analysis'] = _topic_analysis(campaigns, hashtags, db_conn, language)
 
     session['analysis_result'] = analysis_result
 
-    # Redirect to the result page with the analysis result
+    # Step 5: Redirecting the front-end to the results page
     return jsonify({'redirect': url_for('result')})
 
 

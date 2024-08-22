@@ -6,7 +6,7 @@ Module to implement an abstract analyzer of XTRACK-engine.
 import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Callable, Dict, Tuple
 
 from matplotlib.figure import Figure
 from pandas import DataFrame, ExcelWriter
@@ -39,15 +39,84 @@ class Analyzer(ABC, LoggableEntity):
         self.visualizer : Visualizer = Visualizer(log_level)
 
 
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the Analyzer. """
+        raise NotImplementedError('Feature not yet implemented')
+
+
+    def check_for_pre_computed_results(
+            self,
+            query_params : Dict[str, Any],
+            formatting_function : Callable[[DataFrame], Any] | None = None
+        ) -> bool:
+        """
+        Method that checks if there exists a previously computed result for the queried campaign/hashtags.
+
+        Args:
+            query_params (Dict[str, Any]): the query parameters to be used.
+            formatting_function (Callable[[DataFrame], Any] | None): the function to format the resulting DataFrame (if any).
+
+        Returns:
+            A flag indicating if pre-computed results are available.
+        """
+        self.logger.debug(f'Checking for pre-computed analysis results')
+
+        analysis_df = self.db_connector.retrieve_table_from_sql(
+            query_text = self.pre_computed_results_query,
+            query_params = query_params
+        )
+
+        found_precomputed_results = len(analysis_df) > 0
+
+        if found_precomputed_results and formatting_function is not None:
+            self.analysis_results = formatting_function(analysis_df)
+
+        self.logger.debug(f'Checked for pre-computed analysis results')
+
+        return found_precomputed_results
+
+
     @abstractmethod
-    def analyze(self, *args : Tuple[Any, ...], **kwargs : Dict[str, Any]) -> Any:
+    def build_new_results(self, campaign_analysis_id : int, *args : Tuple[Any, ...], **kwargs : Dict[str, Any]) -> Any:
+        """
+        Method to carry out an analysis on the given campaigns/hashtags from scratch.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            *args: the arguments to be used for carrying out the analysis (if any).
+            **kwargs: the keyword arguments to be used for carrying out the analysis (if any).
+
+        Returns:
+            The result of the analysis.
+        """
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            pre_computation_formatting_function : Callable[[DataFrame], Any] | None = None,
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
         """
         Method to analyze a specific aspect of the given campaign.
 
         Args:
-            *args: the arguments to be used for carrying out the analysis (if any).
-            **kwargs: the keyword arguments to be used for carrying out the analysis (if any).
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing pre-computed results.
+            pre_computation_formatting_function: the function that formats the pre-computed output into the analysis results (if any).
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
         """
+        is_precomputed = self.check_for_pre_computed_results(
+            query_params = {'campaign_analysis_id' : campaign_analysis_id, **pre_computation_query_params},
+            formatting_function = pre_computation_formatting_function
+        )
+
+        if not is_precomputed:
+            self.analysis_results = self.build_new_results(campaign_analysis_id = campaign_analysis_id, **new_computation_kwargs)
+
+        return self.analysis_results
 
 
     @abstractmethod

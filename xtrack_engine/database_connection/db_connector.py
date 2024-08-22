@@ -157,3 +157,89 @@ class DBConnector(LoggableEntity):
         self.logger.debug(f'Stored dataframe @ {schema_name}.{table_name}')
 
         self.__disconnect()
+
+
+    def __retrieve_next_available_results_id(self) -> int:
+        """
+        Method to retrieve the next results identifier available within the campaign analysis table.
+
+        Returns:
+            The next available identifier in the campaign analysis table.
+        """
+        self.logger.debug('Retrieving the next available identifier of the campaign analysis table.')
+
+        query = """
+        SELECT COALESCE(MAX(id), 0) + 1 AS id
+        FROM campaign_analysis
+        """
+
+        next_available_id = self.retrieve_table_from_sql(query, None)['id'].to_list()[0]
+
+        self.logger.debug('Retrieved the next available identifier of the campaign analysis table.')
+
+        return next_available_id
+
+
+    def check_existing_results(self, campaign : str, hashtags : Tuple[str, ...] | None) -> Tuple[bool, int]:
+        """
+        Method to check if there exists results for a given campaign query.
+
+        Args:
+            campaign (str): the campaign being queried.
+            hashtags (Tuple[str, ...] | None): the hashtags to be analyzed (if any).
+
+        Returns:
+            A tuple (bool, int) where bool indicates if there exist results for the given query and the key to retrieve them.
+        """
+        self.logger.debug(f'Checking for existing results @ {campaign};{hashtags}')
+
+        if hashtags is None:
+            query = """
+            SELECT id
+            FROM campaign_analysis
+            WHERE
+                campaign IN %(campaign)s AND
+                hashtags IS NULL
+            """
+            params = {'campaign' : (campaign, )}
+        else:
+            query = """
+            SELECT id
+            FROM campaign_analysis
+            WHERE
+                campaign IN %(campaign)s AND
+                hashtags IN %(hashtags)s
+            """
+            params = {'campaign' : (campaign, ), 'hashtags' : hashtags}
+
+        query_df = self.retrieve_table_from_sql(query, params)
+
+        self.logger.debug(f'Checked for existing results @ {campaign};{hashtags}')
+
+        if len(query_df) > 0:
+            return (True, query_df['id'].to_list()[0])
+
+        return (False, self.__retrieve_next_available_results_id())
+
+
+    def insert_new_results_row(self, results_id : int, campaign : str, hashtags : Tuple[str, ...] | None) -> None:
+        """
+        Method to insert a new results row in the campaign analysis table.
+
+        Args:
+            results_id (int): the identifier to be used for the results.
+            campaign (str): the campaign whose analysis will be stored.
+            hashtags (Tuple[str, ...]): the hashtags related to the analysis (if any).
+        """
+        self.logger.debug(f'Inserting a new row in the campaign analysis table ({campaign};{hashtags})')
+
+        # Step 1: Dealing with the given hashtags
+        hashtags = ', '.join(hashtags) if hashtags is not None else hashtags
+
+        # Step 2: Creating a Pandas DataFrame containing the row
+        analysis_df = pd.DataFrame(data = [[results_id, campaign, hashtags]], columns = ['id', 'campaign', 'hashtags'])
+
+        # Step 3: Inserting the Pandas DataFrame
+        self.store_table_to_sql(analysis_df, 'campaign_analysis', 'append')
+
+        self.logger.debug(f'Inserted a new row in the campaign analysis table ({campaign};{hashtags})')

@@ -11,11 +11,11 @@ getSessionData()
 .then(sessionData => {
     sessionData = sessionData.analysis_result
 
-    // // 1. Motto Analysis
-    // show_motto_analysis(sessionData)
+    // 1. Motto Analysis
+    show_motto_analysis(sessionData)
 
-    // // 2. Media analysis
-    // show_media_analysis(sessionData)
+    // 2. Media analysis
+    show_media_analysis(sessionData)
 
     // // 3. User analysis
     // show_user_analysis(sessionData)
@@ -29,8 +29,8 @@ getSessionData()
     // // 6. Speech analysis
     // show_speech_analysis(sessionData)
 
-    // 7. Topic analysis
-    show_topic_analysis(sessionData)
+    // // 7. Topic analysis
+    // show_topic_analysis(sessionData)
 
     return sessionData
 })

@@ -19,6 +19,18 @@ class MottoAnalyzer(Analyzer):
     """
 
 
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the MottoAnalyzer. """
+        return """
+            SELECT motto, frequency
+            FROM motto_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s AND
+                sentiment = %(sentiment)s
+        """
+
+
     def __analyze_most_employed_mottos(self, top_k : int = 10) -> DataFrame:
         """
         Method to carry out motto analysis on the given campaigns for all mottos (no sentiment filter applied).
@@ -157,15 +169,17 @@ class MottoAnalyzer(Analyzer):
         return tuple(analysis_results)
 
 
-    def analyze(
+    def build_new_results(
             self,
+            campaign_analysis_id : int,
             sentiment : Literal['both', 'negative', 'positive'],
             top_k : int = 10,
         ) -> Tuple[Tuple[str, int], ...]:
         """
-        Method to carry out motto analysis on the given campaigns.
+        Method to carry out motto analysis on the given campaigns from scratch.
 
         Args:
+            campaign_analysis_id: the identifier to be used for storing the results related to the campaign/hashtags query.
             sentiment: the sentiment to be used for filtering the mottos' analysis.
             top_k: the number of top-used mottos to be retrieved as a result.
 
@@ -185,12 +199,38 @@ class MottoAnalyzer(Analyzer):
             case _:
                 raise IllegalAnalysisConfigError(f'Illegal sentiment configuration for MottoAnalyzer: {sentiment}')
 
-        # Step 2: Formatting the results
+        # Step 2: Storing the results
+        mottos_df['campaign_analysis_id'] = campaign_analysis_id
+        mottos_df['sentiment'] = sentiment
+        mottos_df = mottos_df[['campaign_analysis_id', 'motto', 'frequency', 'sentiment']]
+        self.db_connector.store_table_to_sql(mottos_df, 'motto_analysis_results', 'append')
+
+        # Step 3: Formatting the results
         self.analysis_results = self.__format_analysis_results(mottos_df)
 
         self.logger.info(f'Analyzed top-{top_k} most employed mottos (sentiment = {sentiment})')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the most employed mottos per sentiment on the given campaigns and hashtags.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing MottoAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A tuple of tuples (motto, frequency) describing the top-K most employed mottos (per sentiment).
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, self.__format_analysis_results, new_computation_kwargs)
 
 
     def to_pandas_dataframe(self, motto_column_name : str = 'motto', frequency_column_name : str = 'frequency') -> DataFrame:

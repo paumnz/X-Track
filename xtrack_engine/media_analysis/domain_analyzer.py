@@ -3,7 +3,7 @@ Module to implement the XTRACK framework's engine capability to analyze media ou
 """
 
 
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from matplotlib.figure import Figure
 from pandas import DataFrame
@@ -15,6 +15,17 @@ class DomainAnalyzer(Analyzer):
     """
     A class to implement the analysis functionality of XTRACK's engine on media outlets' domains.
     """
+
+
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the DomainAnalyzer. """
+        return """
+            SELECT domain, frequency
+            FROM media_domain_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s
+        """
 
 
     def __format_analysis_results(
@@ -92,8 +103,9 @@ class DomainAnalyzer(Analyzer):
         return domains_df
 
 
-    def analyze(
+    def build_new_results(
             self,
+            campaign_analysis_id : int,
             top_k : int,
             hashtags : Tuple[str, ...] | None = None
         ) -> Tuple[Tuple[str, int], ...]:
@@ -101,6 +113,7 @@ class DomainAnalyzer(Analyzer):
         Method to analyze most shared media outlet domains in the Twitter conversation.
 
         Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results.
             top_k: the number of "most-frequent" media outlet domains to be retrieved.
             hashtags: the hashtags with which to filter the tweets when applying the analysis.
 
@@ -114,12 +127,37 @@ class DomainAnalyzer(Analyzer):
         # Step 1: Analyzing most used domains given the provided hashtags
         domains_df = self.__analyze_most_shared_domains(top_k, hashtags)
 
-        # Step 2: Formatting the results
+        # Step 2: Storing the results
+        domains_df['campaign_analysis_id'] = campaign_analysis_id
+        domains_df = domains_df[['campaign_analysis_id', 'domain', 'frequency']]
+        self.db_connector.store_table_to_sql(domains_df, 'media_domain_analysis_results', 'append')
+
+        # Step 3: Formatting the results
         self.analysis_results = self.__format_analysis_results(domains_df)
 
         self.logger.info(f'Analyzed top-{top_k} most employed media outlet domains (hashtags = {hashtags})')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the most employed domains per sentiment on the given campaigns and hashtags.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing DomainAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A tuple of tuples (domain, frequency) describing the top-K most employed domains.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, self.__format_analysis_results, new_computation_kwargs)
 
 
     def to_pandas_dataframe(
