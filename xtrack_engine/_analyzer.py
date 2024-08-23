@@ -71,6 +71,8 @@ class Analyzer(ABC, LoggableEntity):
 
         if found_precomputed_results and formatting_function is not None:
             self.analysis_results = formatting_function(analysis_df)
+        elif found_precomputed_results:
+            self.analysis_results = analysis_df
 
         self.logger.debug(f'Checked for pre-computed analysis results')
 

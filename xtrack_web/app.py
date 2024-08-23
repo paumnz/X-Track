@@ -153,8 +153,8 @@ def _user_analysis(
     # Step 2: Influential users analysis
     influential_users = MultiCriteriaUserAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {}, {'top_k' : top_k, 'hashtags' : hashtags})
 
-    # # Step 3: Bot analysis
-    # bot_analysis = BotAnalyzer(campaigns, db_conn, XTRACK_CONFIGURATION_FILEPATH).analyze(hashtags = hashtags, top_k = 0)
+    # Step 3: Bot analysis
+    bot_analysis = BotAnalyzer(campaigns, db_conn, XTRACK_CONFIGURATION_FILEPATH).analyze(campaign_analysis_id, {}, {'hashtags' : hashtags, 'top_k' : None})
 
     return {
         'account_creation' : {
@@ -165,10 +165,10 @@ def _user_analysis(
             'labels' : [label for label, _ in influential_users],
             'data' : [label_usage for _, label_usage in influential_users]
         },
-        # 'bot_users' : {
-        #     'labels' : [label for label in bot_analysis['bot']],
-        #     'values' : [frequency for frequency in bot_analysis['frequency']]
-        # }
+        'bot_users' : {
+            'labels' : [label for label in bot_analysis['bot']],
+            'values' : [frequency for frequency in bot_analysis['frequency']]
+        }
     }
 
 

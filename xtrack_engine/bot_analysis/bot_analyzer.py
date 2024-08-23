@@ -43,6 +43,17 @@ class BotAnalyzer(Analyzer):
         self.rapid_api_key : str = botometer_configs['rapid_api_key']
 
 
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the BotAnalyzer. """
+        return """
+            SELECT bot, frequency
+            FROM user_bot_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s
+        """
+
+
     def __read_botometer_config_file(self, botometer_config_filepath : str) -> Dict[str, Any]:
         """
         Private method to read the Botometer X API configurations from a given configuration file.
@@ -214,8 +225,9 @@ class BotAnalyzer(Analyzer):
         return analysis_df
 
 
-    def analyze(
+    def build_new_results(
             self,
+            campaign_analysis_id : int,
             top_k : int | None = None,
             hashtags : Tuple[str, ...] | None = None,
         ) -> DataFrame:
@@ -223,6 +235,7 @@ class BotAnalyzer(Analyzer):
         Method to carry out the bot detection and analysis on active users of the XTRACK's engine.
 
         Args:
+            campaign_analysis_id: the identifier with which to store the computed results.
             top_k: the maximum number of users on which the bot detection tool will be applied. All users are analyzed by default.
             hashtags: the hashtags with which to filter the activity (if any).
 
@@ -239,11 +252,38 @@ class BotAnalyzer(Analyzer):
             self.__apply_bot_analysis(users_to_analyze)
 
         # Step 3: Retrieving bot analysis
-        self.analysis_results : DataFrame = self.__retrieve_bot_analysis(hashtags)
+        bot_df : DataFrame = self.__retrieve_bot_analysis(hashtags)
+
+        # Step 4: Storing the results into the database
+        bot_df['campaign_analysis_id'] = campaign_analysis_id
+        bot_df = bot_df[['campaign_analysis_id', 'bot', 'frequency']]
+        self.db_connector.store_table_to_sql(bot_df, 'user_bot_analysis_results', 'append')
+
+        self.analysis_results = bot_df
 
         self.logger.debug(f'Applied bot detection on the given campaigns and hashtags')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the absolute frequency of bots of the given campaigns and hashtags.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing BotAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A tuple of tuples (bot, frequency) describing the absolute frequency of bots and no-bots in the given campaign/hashtags.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, None, new_computation_kwargs)
 
 
     def to_pandas_dataframe(
@@ -263,7 +303,7 @@ class BotAnalyzer(Analyzer):
         """
         self.logger.debug('Converting BotAnalyzer results into a Pandas DataFrame')
 
-        tweet_language_df : DataFrame = self.analysis_results.copy()
+        tweet_language_df : DataFrame = self.analysis_results.drop(axis = 1, columns = ['campaign_analysis_id'])
         tweet_language_df.columns = [bot_column_name, frequency_column_name]
 
         self.logger.debug('Converted BotAnalyzer results into a Pandas DataFrame')
