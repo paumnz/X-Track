@@ -23,8 +23,8 @@ getSessionData()
     // 4. Tweet analysis
     show_tweet_analysis(sessionData)
 
-    // // 5. Network metric analysis
-    // show_network_metric_analysis(sessionData)
+    // 5. Network metric analysis
+    show_network_metric_analysis(sessionData)
 
     // // 6. Speech analysis
     // show_speech_analysis(sessionData)

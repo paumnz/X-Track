@@ -309,7 +309,8 @@ def _network_metric_analysis(
         campaigns : Tuple[str, ...],
         hashtags : Tuple[str, ...],
         db_conn : DBConnector,
-        network_metrics : Tuple[str, ...]
+        network_metrics : Tuple[str, ...],
+        campaign_analysis_id : int
     ) -> Dict[str, Any]:
     """
     Method to carry out the network metric analysis.
@@ -319,23 +320,24 @@ def _network_metric_analysis(
         hashtags (Tuple[str, ...]): the hashtags with which to filter user activity.
         db_conn (DBConnector): the database connector instance to be used.
         network_metrics (Tuple[str, ...]): the network metrics to be computed.
+        campaign_analysis_id (int): the identifier to be used for storing/restoring the computed results.
 
     Returns:
         A dictionary with the network metric analysis results to be shown in the front-end.
     """
 
     # Step 1: Analyzing network metrics over time
-    retweet_network_metrics = NetworkMetricAnalyzer(campaigns, db_conn).analyze(network_metrics, hashtags, 'retweet')
-    reply_network_metrics = NetworkMetricAnalyzer(campaigns, db_conn).analyze(network_metrics, hashtags, 'reply')
+    retweet_network_metrics = NetworkMetricAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {'network_metrics' : network_metrics, 'network_type' : 'retweet'}, {'network_metrics' : network_metrics, 'hashtags' : hashtags, 'network_type' : 'retweet'})
+    reply_network_metrics = NetworkMetricAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {'network_metrics' : network_metrics, 'network_type' : 'reply'}, {'network_metrics' : network_metrics, 'hashtags' : hashtags, 'network_type' : 'reply'})
 
     # Step 2: Preparing results
     retweet_network_metrics_analysis_results = _prepare_network_metric_results(retweet_network_metrics, network_metrics)
     reply_network_metrics_analysis_results = _prepare_network_metric_results(reply_network_metrics, network_metrics)
 
     # Step 3: Creating both networks for plotting
-    retweet_network_df = NetworkAnalyzer(campaigns, db_conn).analyze(hashtags, 'retweet')
+    retweet_network_df = NetworkAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {'network_type' : 'retweet'}, {'hashtags' : hashtags, 'network_type' : 'retweet'})
     retweet_network_analysis_results = _prepare_network_results(retweet_network_df)
-    reply_network_df = NetworkAnalyzer(campaigns, db_conn).analyze(hashtags, 'reply')
+    reply_network_df = NetworkAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {'network_type' : 'reply'}, {'hashtags' : hashtags, 'network_type' : 'reply'})
     reply_network_analysis_results = _prepare_network_results(reply_network_df)
 
     return {
@@ -488,7 +490,7 @@ def analyze_campaigns():
     analysis_result['media_analysis'] = _media_analysis(campaigns, hashtags, db_conn, campaign_analysis_stored_results[1])
     analysis_result['user_analysis'] = _user_analysis(campaigns, hashtags, db_conn, campaign_analysis_stored_results[1])
     analysis_result['tweet_analysis'] = _tweet_analysis(campaigns, hashtags, db_conn, campaign_analysis_stored_results[1])
-    # analysis_result['network_metric_analysis'] = _network_metric_analysis(campaigns, hashtags, db_conn, network_metrics)
+    analysis_result['network_metric_analysis'] = _network_metric_analysis(campaigns, hashtags, db_conn, network_metrics, campaign_analysis_stored_results[1])
     # analysis_result['topic_analysis'] = _topic_analysis(campaigns, hashtags, db_conn, language)
 
     session['analysis_result'] = analysis_result

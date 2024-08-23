@@ -47,6 +47,19 @@ class NetworkMetricAnalyzer(Analyzer):
         self.reply_network_generator = ReplyNetworkGenerator(campaigns, db_connector, log_level)
 
 
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the NetworkMetricAnalyzer. """
+        return """
+            SELECT network_metric, value, date
+            FROM network_metric_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s AND
+                network_type = %(network_type)s AND
+                network_metric IN %(network_metrics)s
+        """
+
+
     def __select_network_generator_for_analysis(self, network_type : Literal['retweet', 'reply']) -> NetworkGenerator:
         """
         Private method to select the network generator for the network metric analysis.
@@ -162,8 +175,9 @@ class NetworkMetricAnalyzer(Analyzer):
         return results_df
 
 
-    def analyze(
+    def build_new_results(
             self,
+            campaign_analysis_id : int,
             network_metrics : str | Tuple[str, ...],
             hashtags : Tuple[str, ...] | None = None,
             network_type : Literal['retweet', 'reply'] = 'retweet',
@@ -175,6 +189,7 @@ class NetworkMetricAnalyzer(Analyzer):
         Method to carry out the network metric analysis over time of the XTRACK's engine.
 
         Args:
+            campaign_analysis_id: the identifier to be used for storing data into the database.
             network_metrics: the network metric/s to be computed.
             hashtags: the hashtags with which to filter the activity (if any).
             network_type: the type of network to be used, either a retweet or a reply network.
@@ -202,9 +217,56 @@ class NetworkMetricAnalyzer(Analyzer):
         # Step 4: Execution of network metrics
         self.analysis_results : pd.DataFrame = self.__aply_all_network_metrics(networks_per_window, network_metrics, first_date, last_date, window_size_in_days)
 
+        # Step 5: Storing results into the database
+        network_metric_df = self.analysis_results.copy()
+        network_metric_df = network_metric_df.melt(id_vars = ['date'], var_name = 'network_metric', value_name = 'value')
+        network_metric_df['campaign_analysis_id'] = campaign_analysis_id
+        network_metric_df['network_type'] = network_type
+        network_metric_df = network_metric_df[['campaign_analysis_id', 'network_metric', 'value', 'date', 'network_type']]
+        self.db_connector.store_table_to_sql(network_metric_df, 'network_metric_analysis_results', 'append')
+
         self.logger.debug(f'Executed network metric analysis on the given campaigns and hashtags')
 
         return self.analysis_results
+
+
+    def __format_analysis_results(self, network_metric_df : pd.DataFrame) -> pd.DataFrame:
+        """
+        Method to format the analysis pre-computed results to the format expected by the front-end.
+
+        Args:
+            network_metric_df (DataFrame): the Pandas DataFrame containing the pre-computed results of the analyzer.
+
+        Returns:
+            A Pandas DataFrame with the expected format by the front-end.
+        """
+        self.logger.debug('Formatting the pre-computed network metric results')
+
+        formatted_df = network_metric_df.pivot(index='date', columns='network_metric', values='value').reset_index()
+
+        self.logger.debug('Formatted the pre-computed network metric results')
+
+        return formatted_df
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the network metrics during the given campaign/hashtags.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing NetworkMetricAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A DataFrame containing the network metrics measurement for the given campaign/hashtags.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, self.__format_analysis_results, new_computation_kwargs)
 
 
     def to_pandas_dataframe(self) -> pd.DataFrame:

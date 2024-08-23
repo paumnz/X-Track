@@ -46,6 +46,18 @@ class NetworkAnalyzer(Analyzer):
         self.reply_network_generator = ReplyNetworkGenerator(campaigns, db_connector, log_level)
 
 
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the NetworkMetricAnalyzer. """
+        return """
+            SELECT source, target, weight, source_sentiment, source_activity, target_sentiment, target_activity
+            FROM network_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s AND
+                network_type = %(network_type)s
+        """
+
+
     def __select_network_generator_for_analysis(self, network_type : Literal['retweet', 'reply']) -> NetworkGenerator:
         """
         Private method to select the network generator for the network metric analysis.
@@ -194,8 +206,9 @@ class NetworkAnalyzer(Analyzer):
         )
 
 
-    def analyze(
+    def build_new_results(
             self,
+            campaign_analysis_id : int,
             hashtags : Tuple[str, ...] | None = None,
             network_type : Literal['retweet', 'reply'] = 'retweet',
             first_date : date = None,
@@ -206,6 +219,7 @@ class NetworkAnalyzer(Analyzer):
         Method to carry out the network analysis over time of the XTRACK's engine.
 
         Args:
+            campaign_analysis_id: the identifier with which to store the results in the database.
             hashtags: the hashtags with which to filter the activity (if any).
             network_type: the type of network to be used, either a retweet or a reply network.
             first_date: the first date to be considered for analyzing the network.
@@ -234,9 +248,36 @@ class NetworkAnalyzer(Analyzer):
         # Step 5: Formatting the results
         self.analysis_results : pd.DataFrame = self.__format_analysis_results(network, nodes_attributes)
 
+        # Step 6: Storing the results in the database
+        edge_df = self.analysis_results.copy()
+        edge_df['campaign_analysis_id'] = campaign_analysis_id
+        edge_df['network_type'] = network_type
+        edge_df = edge_df[['campaign_analysis_id', 'source', 'target', 'weight', 'source_sentiment', 'source_activity', 'target_sentiment', 'target_activity', 'network_type']]
+        self.db_connector.store_table_to_sql(edge_df, 'network_analysis_results', 'append')
+
         self.logger.debug(f'Executed network metric analysis on the given campaigns and hashtags')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the networks formed during the given campaign/hashtags.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing TweetRedundancyAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A DataFrame describing the network (of the given type) formed during the given campaign/hashtags.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, None, new_computation_kwargs)
 
 
     def to_pandas_dataframe(self) -> pd.DataFrame:
