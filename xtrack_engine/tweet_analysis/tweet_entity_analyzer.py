@@ -3,7 +3,7 @@ Module to implement the tweet (named) entity analysis functionality of XTRACK's 
 """
 
 
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 import plotly.graph_objects as go
 from pandas import DataFrame
@@ -15,6 +15,17 @@ class TweetEntityAnalyzer(Analyzer):
     """
     Class to implement the tweet (named) entity analysis functionality of XTRACK's engine.
     """
+
+
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the TweetEntityAnalyzer. """
+        return """
+            SELECT category, entity, frequency
+            FROM tweet_entity_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s
+        """
 
 
     def __retrieve_most_employed_tweet_entities(self, top_k : int, hashtags) -> DataFrame:
@@ -67,11 +78,18 @@ class TweetEntityAnalyzer(Analyzer):
         return redundancy_df
 
 
-    def analyze(self, top_k : int, hashtags : Tuple[str, ...] | None = None) -> DataFrame:
+    def build_new_results(
+            self,
+            campaign_analysis_id : int,
+            top_k : int,
+            hashtags : Tuple[str, ...] | None = None
+        ) -> DataFrame:
         """
         Method to carry out the detection of most used named entities in tweets of the given campaign/s of the XTRACK's engine.
 
         Args:
+            campaign_analysis_id: the identifier with which to store the results into the database.
+            top_k: the number of named entities to be retrieved.
             hashtags: the hashtags with which to filter the activity (if any).
 
         Returns:
@@ -79,11 +97,38 @@ class TweetEntityAnalyzer(Analyzer):
         """
         self.logger.debug(f'Calculating top-{top_k} most used named entities in the tweets of the given campaigns and hashtags')
 
-        self.analysis_results : DataFrame = self.__retrieve_most_employed_tweet_entities(top_k, hashtags)
+        # Step 1: Calculating the most used named entities
+        entities_df : DataFrame = self.__retrieve_most_employed_tweet_entities(top_k, hashtags)
+        self.analysis_results : DataFrame = entities_df.copy()
+
+        # Step 2: Storing the results into the database
+        entities_df['campaign_analysis_id'] = campaign_analysis_id
+        entities_df = entities_df[['campaign_analysis_id', 'category', 'entity', 'frequency']]
+        self.db_connector.store_table_to_sql(entities_df, 'tweet_entity_analysis_results', 'append')
 
         self.logger.debug(f'Calculated top-{top_k} most used named entities in the tweets of the given campaigns and hashtags')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the most employed named entities in the tweets of the given campaigns and hashtags.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing TweetEntityAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A tuple of tuples (user, interactions) describing the top-K most employed named entities in the tweets of the given campaign.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, None, new_computation_kwargs)
 
 
     def to_pandas_dataframe(

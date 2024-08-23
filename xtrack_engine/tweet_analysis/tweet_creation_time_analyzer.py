@@ -3,7 +3,7 @@ Module to implement the tweet creation time analysis functionality of XTRACK's e
 """
 
 
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 from matplotlib.figure import Figure
 from pandas import DataFrame
@@ -15,6 +15,17 @@ class TweetCreationTimeAnalyzer(Analyzer):
     """
     Class to implement the tweet creation time analysis functionality of XTRACK's engine.
     """
+
+
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the TweetCreationTimeAnalyzer. """
+        return """
+            SELECT dayhour, tweet_volume
+            FROM tweet_creation_time_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s
+        """
 
 
     def __retrieve_tweet_creation_time_per_hour(self, hashtags) -> DataFrame:
@@ -61,11 +72,16 @@ class TweetCreationTimeAnalyzer(Analyzer):
         return impact_df
 
 
-    def analyze(self, hashtags : Tuple[str, ...] | None = None) -> DataFrame:
+    def build_new_results(
+            self,
+            campaign_analysis_id : int,
+            hashtags : Tuple[str, ...] | None = None
+        ) -> DataFrame:
         """
         Method to carry out the tweet creation time analysis of the XTRACK's engine.
 
         Args:
+            campaign_analysis_id: the identifier with which to store pre-computed results.
             hashtags: the hashtags with which to filter the activity (if any).
 
         Returns:
@@ -73,11 +89,38 @@ class TweetCreationTimeAnalyzer(Analyzer):
         """
         self.logger.debug(f'Calculating tweets per hour of the given campaigns and hashtags')
 
-        self.analysis_results = self.__retrieve_tweet_creation_time_per_hour(hashtags)
+        # Step 1: Calculating the tweet creation time per hour
+        activity_df = self.__retrieve_tweet_creation_time_per_hour(hashtags)
+        self.analysis_results : DataFrame = activity_df
+
+        # Step 2: Storing the results in the database
+        activity_df['campaign_analysis_id'] = campaign_analysis_id
+        activity_df = activity_df[['campaign_analysis_id', 'dayhour', 'tweet_volume']]
+        self.db_connector.store_table_to_sql(activity_df, 'tweet_creation_time_analysis_results', 'append')
 
         self.logger.debug(f'Calculated tweets per hour of the given campaigns and hashtags')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the tweet creation time of the given campaigns and hashtags.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing TweetCreationTimeAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A Dataframe with the tweet creation time of the given campaign/hashtags.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, None, new_computation_kwargs)
 
 
     def to_pandas_dataframe(

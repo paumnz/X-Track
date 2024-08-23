@@ -3,7 +3,7 @@ Module to implement the tweet language analysis functionality of XTRACK's engine
 """
 
 
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 from matplotlib.figure import Figure
 from pandas import DataFrame
@@ -15,6 +15,17 @@ class TweetLanguageAnalyzer(Analyzer):
     """
     Class to implement the tweet language analysis functionality of XTRACK's engine.
     """
+
+
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the TweetLanguageAnalyzer. """
+        return """
+            SELECT language, tweet_volume
+            FROM tweet_language_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s
+        """
 
 
     def __retrieve_tweet_volume_per_lang(self, top_k : int = 5, hashtags = None) -> DataFrame:
@@ -65,7 +76,12 @@ class TweetLanguageAnalyzer(Analyzer):
         return tweets_per_lang_df
 
 
-    def analyze(self, top_k : int = 5, hashtags : Tuple[str, ...] | None = None) -> DataFrame:
+    def build_new_results(
+            self,
+            campaign_analysis_id : int,
+            top_k : int = 5,
+            hashtags : Tuple[str, ...] | None = None
+        ) -> DataFrame:
         """
         Method to carry out the tweet language analysis of the XTRACK's engine.
 
@@ -77,11 +93,38 @@ class TweetLanguageAnalyzer(Analyzer):
         """
         self.logger.debug(f'Calculating tweets per language on the given campaigns and hashtags')
 
+        # Step 1: Calculate the most employed languages
         self.analysis_results : DataFrame = self.__retrieve_tweet_volume_per_lang(top_k, hashtags)
+
+        # Step 2: Store the results into the database
+        language_df = self.analysis_results.copy()
+        language_df['campaign_analysis_id'] = campaign_analysis_id
+        language_df = language_df[['campaign_analysis_id', 'language', 'tweet_volume']]
+        self.db_connector.store_table_to_sql(language_df, 'tweet_language_analysis_results', 'append')
 
         self.logger.debug(f'Calculated tweets per language on the given campaigns and hashtags')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the most employed languages in the given campaigns/hashtags.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing TweetLanguageAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A tuple of tuples (user, interactions) describing the top-K most employed languages in the given campaign/hashtags.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, None, new_computation_kwargs)
 
 
     def to_pandas_dataframe(

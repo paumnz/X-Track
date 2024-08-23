@@ -176,6 +176,7 @@ def _tweet_analysis(
         campaigns : Tuple[str, ...],
         hashtags : Tuple[str, ...],
         db_conn : DBConnector,
+        campaign_analysis_id : int,
         top_k : int = 10
     ) -> Dict[str, Any]:
     """
@@ -185,6 +186,7 @@ def _tweet_analysis(
         campaigns (Tuple[str, ...]): the campaign/s to be analyzed.
         hashtags (Tuple[str, ...]): the hashtags with which to filter user activity.
         db_conn (DBConnector): the database connector instance to be used.
+        campaign_analysis_id (int): the identifier to store or restore computed analysis results.
         top_k (int): the number to be used for top-N rankings.
 
     Returns:
@@ -193,34 +195,28 @@ def _tweet_analysis(
 
     # Step 1: Tweet entity analyzer
     tweet_entity_analyzer = TweetEntityAnalyzer(campaigns, db_conn)
-    tweet_entity_analyzer.analyze(top_k, hashtags)
+    tweet_entity_analyzer.analyze(campaign_analysis_id, {}, {'top_k' : top_k, 'hashtags' : hashtags})
     tweet_entities_fig = tweet_entity_analyzer.to_image(title = 'Tweet entity tree map')
 
     # Step 2: Tweet creation time analyzer
-    tweet_creation_time_analyzer = TweetCreationTimeAnalyzer(campaigns, db_conn)
-    tweet_creation_time_analyzer.analyze(hashtags)
-    tweet_creation_time_analysis = tweet_creation_time_analyzer.to_pandas_dataframe()
+    tweet_creation_time_analysis = TweetCreationTimeAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {}, {'hashtags' : hashtags})
 
     # Step 3: Tweet creation time per sentiment analyzer
-    tweet_creation_time_per_sentiment_analyzer = TweetSentimentCreationTimeAnalyzer(campaigns, db_conn)
-    tweet_creation_time_per_sentiment_analyzer.analyze(hashtags)
-    tweet_creation_time_per_sentiment_analysis = tweet_creation_time_per_sentiment_analyzer.to_pandas_dataframe()
+    tweet_creation_time_per_sentiment_analysis = TweetSentimentCreationTimeAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {}, {'hashtags' : hashtags})
 
     # Step 4: Wordcloud analyzer
     wordcloud_analyzer = WordCloudAnalyzer(campaigns, db_conn)
-    wordcloud_analyzer.analyze(hashtags)
+    wordcloud_analyzer.analyze(campaign_analysis_id, {}, {'hashtags' : hashtags})
     wordcloud_fig = wordcloud_analyzer.to_image()
 
     # Step 5: Language analyzer
-    tweet_language_analyzer = TweetLanguageAnalyzer(campaigns, db_conn)
-    tweet_language_analyzer.analyze(5, hashtags)
-    tweet_language_analysis = tweet_language_analyzer.to_pandas_dataframe()
+    tweet_language_analysis = TweetLanguageAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {}, {'top_k' : 5, 'hashtags' : hashtags})
 
     # Step 6: Tweet impact analyzer
-    tweet_impact_analysis = TweetImpactAnalyzer(campaigns, db_conn).analyze(10, hashtags, 'retweet')
+    tweet_impact_analysis = TweetImpactAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {'tweet_impact_mode' : 'retweet'}, {'top_k' : top_k, 'hashtags' : hashtags, 'mode' : 'retweet'})
 
     # Step 7: Tweet impact analyzer
-    tweet_redundancy_analysis = TweetRedundancyAnalyzer(campaigns, db_conn).analyze(10, hashtags)
+    tweet_redundancy_analysis = TweetRedundancyAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {}, {'top_k' : top_k, 'hashtags' : hashtags})
 
     return {
         'entity_tree_map' : json.dumps(tweet_entities_fig, cls = plotly.utils.PlotlyJSONEncoder),
@@ -491,7 +487,7 @@ def analyze_campaigns():
     analysis_result['motto_analysis'] = _motto_analysis(campaigns, db_conn, campaign_analysis_stored_results[1])
     analysis_result['media_analysis'] = _media_analysis(campaigns, hashtags, db_conn, campaign_analysis_stored_results[1])
     analysis_result['user_analysis'] = _user_analysis(campaigns, hashtags, db_conn, campaign_analysis_stored_results[1])
-    # analysis_result['tweet_analysis'] = _tweet_analysis(campaigns, hashtags, db_conn)
+    analysis_result['tweet_analysis'] = _tweet_analysis(campaigns, hashtags, db_conn, campaign_analysis_stored_results[1])
     # analysis_result['network_metric_analysis'] = _network_metric_analysis(campaigns, hashtags, db_conn, network_metrics)
     # analysis_result['topic_analysis'] = _topic_analysis(campaigns, hashtags, db_conn, language)
 

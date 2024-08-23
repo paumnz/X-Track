@@ -3,7 +3,7 @@ Module to implement the tweet creation time per sentiment analysis functionality
 """
 
 
-from typing import Tuple
+from typing import Any, Dict, Tuple
 
 from matplotlib.figure import Figure
 import pandas as pd
@@ -15,6 +15,17 @@ class TweetSentimentCreationTimeAnalyzer(Analyzer):
     """
     Class to implement the tweet creation time per sentiment analysis functionality of XTRACK's engine.
     """
+
+
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the UserReplyActivityAnalyzer. """
+        return """
+            SELECT dayhour, tweet_volume, sentiment
+            FROM tweet_sentiment_creation_time_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s
+        """
 
 
     def __retrieve_positive_tweet_volume_per_hour(self, hashtags = None) -> pd.DataFrame:
@@ -113,7 +124,11 @@ class TweetSentimentCreationTimeAnalyzer(Analyzer):
         return tweet_volume_df
 
 
-    def analyze(self, hashtags : Tuple[str, ...] | None = None) -> pd.DataFrame:
+    def build_new_results(
+            self,
+            campaign_analysis_id : int,
+            hashtags : Tuple[str, ...] | None = None
+        ) -> pd.DataFrame:
         """
         Method to carry out the sentiment tweet volume per hour analysis of the XTRACK's engine.
 
@@ -125,6 +140,7 @@ class TweetSentimentCreationTimeAnalyzer(Analyzer):
         """
         self.logger.debug(f'Calculating tweet volume per sentiment and hour on the given campaigns and hashtags')
 
+        # Step 1: Calculating the tweet creation time per sentiment
         positive_tweet_volume_df : pd.DataFrame = self.__retrieve_positive_tweet_volume_per_hour(hashtags)
         negative_tweet_volume_df : pd.DataFrame = self.__retrieve_negative_tweet_volume_per_hour(hashtags)
 
@@ -135,9 +151,34 @@ class TweetSentimentCreationTimeAnalyzer(Analyzer):
             ]
         )
 
+        # Step 2: Storing the results in the database
+        tweet_df = self.analysis_results.copy()
+        tweet_df['campaign_analysis_id'] = campaign_analysis_id
+        self.db_connector.store_table_to_sql(tweet_df, 'tweet_sentiment_creation_time_analysis_results', 'append')
+
         self.logger.debug(f'Calculated tweet volume per sentiment and hour on the given campaigns and hashtags')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the creation time of tweets per sentiment in the given campaigns and hashtags.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing TweetSentimentCreationTimeAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A tuple of tuples (user, interactions) describing the tweet creation time per sentiment in the given campaign.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, None, new_computation_kwargs)
 
 
     def to_pandas_dataframe(

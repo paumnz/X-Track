@@ -3,7 +3,7 @@ Module to implement the tweet impact analysis functionality of XTRACK's engine.
 """
 
 
-from typing import Literal, Tuple
+from typing import Any, Dict, Literal, Tuple
 
 from matplotlib.figure import Figure
 from pandas import DataFrame
@@ -17,6 +17,18 @@ class TweetImpactAnalyzer(Analyzer):
     """
     Class to implement the tweet impact analysis functionality of XTRACK's engine.
     """
+
+
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the TweetImpactAnalyzer. """
+        return """
+            SELECT tweet, user, impact
+            FROM tweet_impact_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s AND
+                tweet_impact_mode = %(tweet_impact_mode)s
+        """
 
 
     def __retrieve_most_impactful_tweets_using_retweets(self, top_k : int, hashtags) -> DataFrame:
@@ -123,8 +135,9 @@ class TweetImpactAnalyzer(Analyzer):
         return impact_df
 
 
-    def analyze(
+    def build_new_results(
             self,
+            campaign_analysis_id : int,
             top_k : int,
             hashtags : Tuple[str, ...] | None = None,
             mode : Literal['retweet', 'like'] = 'retweet'
@@ -133,6 +146,7 @@ class TweetImpactAnalyzer(Analyzer):
         Method to carry out the detection of most duplicated tweets of the XTRACK's engine.
 
         Args:
+            campaign_analysis_id: identifier with which to store the results into the database.
             top_k: the number of most impactful tweets to be analyzed.
             hashtags: the hashtags with which to filter the activity (if any).
             mode: the manner to account for impactful tweets (retweets or likes).
@@ -142,17 +156,45 @@ class TweetImpactAnalyzer(Analyzer):
         """
         self.logger.debug(f'Calculating top-{top_k} duplicated tweets of the given campaigns and hashtags')
 
+        # Step 1: Calculating the top-K most impactful tweets
         match mode:
             case 'retweet':
-                self.analysis_results = self.__retrieve_most_impactful_tweets_using_retweets(top_k, hashtags)
+                self.analysis_results : DataFrame = self.__retrieve_most_impactful_tweets_using_retweets(top_k, hashtags)
             case 'like':
-                self.analysis_results = self.__retrieve_most_impactful_tweets_using_likes(top_k, hashtags)
+                self.analysis_results : DataFrame = self.__retrieve_most_impactful_tweets_using_likes(top_k, hashtags)
             case _:
                 raise IllegalAnalysisConfigError(f'Illegal mode configuration for TweetImpactAnalyzer: {mode}')
+
+        # Step 2: Storing the results into the database
+        impact_df = self.analysis_results.copy()
+        impact_df['campaign_analysis_id'] = campaign_analysis_id
+        impact_df['tweet_impact_mode'] = mode
+        impact_df = impact_df[['campaign_analysis_id', 'tweet', 'user', 'impact', 'tweet_impact_mode']]
+        self.db_connector.store_table_to_sql(impact_df, 'tweet_impact_analysis_results', 'append')
 
         self.logger.debug(f'Calculated top-{top_k} duplicated tweets of the given campaigns and hashtags')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the tweets with highest impact in the given campaign/hashtags.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing TweetImpactAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A DataFrame describing the top-K tweets with highest impact.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, None, new_computation_kwargs)
 
 
     def to_pandas_dataframe(

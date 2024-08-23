@@ -253,13 +253,12 @@ class BotAnalyzer(Analyzer):
 
         # Step 3: Retrieving bot analysis
         bot_df : DataFrame = self.__retrieve_bot_analysis(hashtags)
+        self.analysis_results : DataFrame = bot_df
 
         # Step 4: Storing the results into the database
         bot_df['campaign_analysis_id'] = campaign_analysis_id
         bot_df = bot_df[['campaign_analysis_id', 'bot', 'frequency']]
         self.db_connector.store_table_to_sql(bot_df, 'user_bot_analysis_results', 'append')
-
-        self.analysis_results = bot_df
 
         self.logger.debug(f'Applied bot detection on the given campaigns and hashtags')
 
@@ -303,7 +302,7 @@ class BotAnalyzer(Analyzer):
         """
         self.logger.debug('Converting BotAnalyzer results into a Pandas DataFrame')
 
-        tweet_language_df : DataFrame = self.analysis_results.drop(axis = 1, columns = ['campaign_analysis_id'])
+        tweet_language_df : DataFrame = self.analysis_results.copy()
         tweet_language_df.columns = [bot_column_name, frequency_column_name]
 
         self.logger.debug('Converted BotAnalyzer results into a Pandas DataFrame')

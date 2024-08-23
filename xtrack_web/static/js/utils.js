@@ -230,45 +230,17 @@ export function create_multiline_plot(data, canvas_element, x_label_ticks_shown 
 }
 
 
-export function create_plotly_figure(title, plotly_data, div_element_id, height = 800, hover_mode = true) {
-    const plotlyLayout = {
-        title: {
-            text: title,
-            font: {
-                size: 24,
-                color: "#4ecca3",
-                family: "Roboto, sans-serif",
-                weight: "bold"
-            },
-            x: 0.5,
-            xanchor: 'center'
-        },
-        margin: {
-            l: 10, // Small left margin to prevent overflow
-            r: 60, // Small right margin to prevent overflow
-            b: 40, // Bottom margin to prevent axis label overflow
-            t: 60, // Top margin for the title
-            pad: 0
-        },
-        autosize: true,
-        font: {
-            size: 18
-        },
-        height: height,
-        width: document.getElementById(div_element_id).offsetWidth,
-        paper_bgcolor: 'transparent',
-        plot_bgcolor: 'transparent',
-        xaxis: { visible: false },
-        yaxis: { visible: false },
-        hovermode: hover_mode
-    };
+export function create_plotly_figure(title, plotly_data, div_element_id, height = 800, hover_mode = true, layout = undefined) {
+    if(!layout){
+        layout = plotly_data.layout
+    }
     
     const config = {
         responsive: true  // Ensure the chart resizes with the window or container
     };
 
 
-    Plotly.newPlot(div_element_id, plotly_data.data, plotly_data.layout, config);
+    Plotly.newPlot(div_element_id, plotly_data.data, layout, config);
 }
 
 
