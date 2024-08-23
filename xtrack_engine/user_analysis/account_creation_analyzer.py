@@ -3,20 +3,30 @@ Module to implement the account creation analysis functionality of XTRACK's engi
 """
 
 
-from typing import Any, List, Literal, Tuple
+from typing import Any, Dict, Tuple
 
 import networkx as nx
 from matplotlib.figure import Figure
 from pandas import DataFrame
 
 from xtrack_engine._analyzer import Analyzer
-from xtrack_engine.errors.config_errors import IllegalAnalysisConfigError
 
 
 class AccountCreationAnalyzer(Analyzer):
     """
     Class to implement the account creation analysis functionality of XTRACK's engine.
     """
+
+
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the DomainAnalyzer. """
+        return """
+            SELECT month, accounts
+            FROM user_account_creation_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s
+        """
 
 
     def __retrieve_user_accounts_per_month(
@@ -56,20 +66,23 @@ class AccountCreationAnalyzer(Analyzer):
         # Processing the Pandas DataFrame to obtain the count of accounts per month
         account_df['created_at'] = account_df['created_at'].astype(str).apply(lambda row: row[:7])
         account_df = account_df.groupby(by = account_df['created_at'])['user'].count().sort_index(ascending=True).to_frame().reset_index()
+        account_df.columns = ['month', 'accounts']
 
         self.logger.debug(f'Retrieving the number of created accounts per month')
 
         return account_df
 
 
-    def analyze(
+    def build_new_results(
             self,
+            campaign_analysis_id : int,
             hashtags : Tuple[str, ...] | None = None,
         ) -> DataFrame:
         """
         Method to carry out the account creation analysis of the XTRACK's engine.
 
         Args:
+            campaign_analysis_id: the identifier with which to store results in the database.
             hashtags: the hashtags with which to filter the created user accounts (if any).
 
         Returns:
@@ -80,12 +93,37 @@ class AccountCreationAnalyzer(Analyzer):
         # Step 1: Retrieving the Pandas DataFrame with the number of accounts created per month
         activity_df = self.__retrieve_user_accounts_per_month(hashtags)
 
-        # Step 2: Formatting the results
+        # Step 2: Storing the results in the database
+        activity_df['campaign_analysis_id'] = campaign_analysis_id
+        activity_df = activity_df[['campaign_analysis_id', 'month', 'accounts']]
+        self.db_connector.store_table_to_sql(activity_df, 'user_account_creation_analysis_results', 'append')
+
+        # Step 3: Formatting the results
         self.analysis_results : DataFrame = activity_df
 
         self.logger.debug(f'Calculating created user accounts per month')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the most employed domains per sentiment on the given campaigns and hashtags.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing DomainAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A tuple of tuples (domain, frequency) describing the top-K most employed domains.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, None, new_computation_kwargs)
 
 
     def to_pandas_dataframe(self, month_column_name : str = 'month', created_user_accounts_column_name : str = 'accounts') -> DataFrame:

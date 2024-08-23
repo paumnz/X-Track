@@ -130,6 +130,7 @@ def _user_analysis(
         campaigns : Tuple[str, ...],
         hashtags : Tuple[str, ...],
         db_conn : DBConnector,
+        campaign_analysis_id : int,
         top_k : int = 10
     ) -> Dict[str, Any]:
     """
@@ -139,6 +140,7 @@ def _user_analysis(
         campaigns (Tuple[str, ...]): the campaign/s to be analyzed.
         hashtags (Tuple[str, ...]): the hashtags with which to filter user activity.
         db_conn (DBConnector): the database connector instance to be used.
+        campaign_analysis_id (int): the identifier with which to store or restore computed results.
         top_k (int): the number of influential users to be retrieved.
 
     Returns:
@@ -146,15 +148,13 @@ def _user_analysis(
     """
 
     # Step 1: Account creation analysis
-    account_creation_analyzer = AccountCreationAnalyzer(campaigns, db_conn)
-    account_creation_analyzer.analyze(hashtags)
-    account_creation_analysis = account_creation_analyzer.to_pandas_dataframe()
+    account_creation_analysis = AccountCreationAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {}, {'hashtags' : hashtags})
 
     # Step 2: Influential users analysis
-    influential_users = MultiCriteriaUserAnalyzer(campaigns, db_conn).analyze(top_k, hashtags)
+    influential_users = MultiCriteriaUserAnalyzer(campaigns, db_conn).analyze(campaign_analysis_id, {}, {'top_k' : top_k, 'hashtags' : hashtags})
 
-    # Step 3: Bot analysis
-    bot_analysis = BotAnalyzer(campaigns, db_conn, XTRACK_CONFIGURATION_FILEPATH).analyze(hashtags = hashtags, top_k = 0)
+    # # Step 3: Bot analysis
+    # bot_analysis = BotAnalyzer(campaigns, db_conn, XTRACK_CONFIGURATION_FILEPATH).analyze(hashtags = hashtags, top_k = 0)
 
     return {
         'account_creation' : {
@@ -165,10 +165,10 @@ def _user_analysis(
             'labels' : [label for label, _ in influential_users],
             'data' : [label_usage for _, label_usage in influential_users]
         },
-        'bot_users' : {
-            'labels' : [label for label in bot_analysis['bot']],
-            'values' : [frequency for frequency in bot_analysis['frequency']]
-        }
+        # 'bot_users' : {
+        #     'labels' : [label for label in bot_analysis['bot']],
+        #     'values' : [frequency for frequency in bot_analysis['frequency']]
+        # }
     }
 
 
@@ -490,7 +490,7 @@ def analyze_campaigns():
     # analysis_result['speech_analysis'] = _speech_analysis(campaigns, hashtags, db_conn, language) # Must go first
     analysis_result['motto_analysis'] = _motto_analysis(campaigns, db_conn, campaign_analysis_stored_results[1])
     analysis_result['media_analysis'] = _media_analysis(campaigns, hashtags, db_conn, campaign_analysis_stored_results[1])
-    # analysis_result['user_analysis'] = _user_analysis(campaigns, hashtags, db_conn)
+    analysis_result['user_analysis'] = _user_analysis(campaigns, hashtags, db_conn, campaign_analysis_stored_results[1])
     # analysis_result['tweet_analysis'] = _tweet_analysis(campaigns, hashtags, db_conn)
     # analysis_result['network_metric_analysis'] = _network_metric_analysis(campaigns, hashtags, db_conn, network_metrics)
     # analysis_result['topic_analysis'] = _topic_analysis(campaigns, hashtags, db_conn, language)

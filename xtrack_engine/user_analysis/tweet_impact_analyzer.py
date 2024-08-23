@@ -3,7 +3,7 @@ Module to implement the user tweet impact analysis functionality of XTRACK's eng
 """
 
 
-from typing import Any, List, Literal, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
 from matplotlib.figure import Figure
 from pandas import DataFrame
@@ -16,6 +16,18 @@ class TweetImpactAnalyzer(Analyzer):
     """
     Class to implement the user tweet impact analysis functionality of XTRACK's engine.
     """
+
+
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the TweetImpactAnalyzer. """
+        return """
+            SELECT user, interactions
+            FROM user_tweet_impact_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s AND
+                tweet_impact_mode = %(mode)s
+        """
 
 
     def __retrieve_users_with_highest_impact(
@@ -110,8 +122,9 @@ class TweetImpactAnalyzer(Analyzer):
         return tuple(analysis_results)
 
 
-    def analyze(
+    def build_new_results(
             self,
+            campaign_analysis_id : int,
             top_k : int,
             hashtags : Tuple[str, ...] | None = None,
             mode : Literal['rt+like', 'reply+quote'] = 'rt+like'
@@ -120,6 +133,7 @@ class TweetImpactAnalyzer(Analyzer):
         Method to carry out the user tweet impact analysis of the XTRACK's engine.
 
         Args:
+            campaign_analysis_id: the identifier with which to store the results into the database.
             top_k: the number of users with highest impact to be retrieved.
             hashtags: the hashtags with which to filter the activity (if any).
             mode: the mode with which most impactful users will be retrieved.
@@ -132,12 +146,38 @@ class TweetImpactAnalyzer(Analyzer):
         # Step 1: Retrieving the Pandas DataFrame with the most active users
         activity_df = self.__retrieve_users_with_highest_impact(top_k, hashtags, mode)
 
-        # Step 2: Formatting the results
+        # Step 2: Storing the results into the database
+        activity_df['campaign_analysis_id'] = campaign_analysis_id
+        activity_df['tweet_impact_mode'] = mode
+        activity_df = activity_df[['campaign_analysis_id', 'user', 'interactions', 'tweet_impact_mode']]
+        self.db_connector.store_table_to_sql(activity_df, 'user_tweet_impact_analysis_results', 'append')
+
+        # Step 3: Formatting the results
         self.analysis_results : Tuple[Tuple[Any, int], ...] = self.__format_analysis_results(activity_df)
 
         self.logger.debug(f'Calculated top-{top_k} users with highest impact mode = {mode}')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the most users with highest tweet impact of the given campaigns and hashtags.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing TweetImpactAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A tuple of tuples (user, interactions) describing the top-K users with highest tweet impact.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, self.__format_analysis_results, new_computation_kwargs)
 
 
     def to_pandas_dataframe(self, user_column_name : str = 'user', interactions_column_name : str = 'interactions') -> DataFrame:

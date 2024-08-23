@@ -3,7 +3,7 @@ Module to implement the user tweet activity analysis functionality of XTRACK's e
 """
 
 
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from matplotlib.figure import Figure
 from pandas import DataFrame
@@ -15,6 +15,17 @@ class UserTweetActivityAnalyzer(Analyzer):
     """
     Class to implement the user tweet activity analysis functionality of XTRACK's engine.
     """
+
+
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the UserTweetActivityAnalyzer. """
+        return """
+            SELECT user, frequency
+            FROM user_tweet_activity_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s
+        """
 
 
     def __retrieve_most_active_users(self, top_k : int, hashtags : Tuple[str, ...]) -> DataFrame:
@@ -82,11 +93,17 @@ class UserTweetActivityAnalyzer(Analyzer):
         return tuple(analysis_results)
 
 
-    def analyze(self, top_k : int, hashtags : Tuple[str, ...] | None = None) -> Tuple[Any, ...]:
+    def build_new_results(
+            self,
+            campaign_analysis_id : int,
+            top_k : int,
+            hashtags : Tuple[str, ...] | None = None
+        ) -> Tuple[Any, ...]:
         """
         Method to carry out the user tweet activity analysis of the XTRACK's engine.
 
         Args:
+            campaign_analysis_id: the identifier with which to store the results into the database.
             top_k: the number of most active users to be retrieved.
             hashtags: the hashtags with which to filter the activity (if any).
 
@@ -98,12 +115,37 @@ class UserTweetActivityAnalyzer(Analyzer):
         # Step 1: Retrieving the Pandas DataFrame with the most active users
         activity_df = self.__retrieve_most_active_users(top_k, hashtags)
 
-        # Step 2: Formatting the results
+        # Step 2: Storing the results into the database
+        activity_df['campaign_analysis_id'] = campaign_analysis_id
+        activity_df = activity_df[['campaign_analysis_id', 'user', 'frequency']]
+        self.db_connector.store_table_to_sql(activity_df, 'user_tweet_activity_analysis_results', 'append')
+
+        # Step 3: Formatting the results
         self.analysis_results : Tuple[Tuple[Any, int], ...] = self.__format_analysis_results(activity_df)
 
         self.logger.debug(f'Calculated top-{top_k} most active users')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the most users with highest tweet activity of the given campaigns and hashtags.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing UserTweetActivityAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A tuple of tuples (user, interactions) describing the top-K users with highest tweet activity.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, self.__format_analysis_results, new_computation_kwargs)
 
 
     def to_pandas_dataframe(self, user_column_name : str = 'user', user_activity_column_name : str = 'num_tweets') -> DataFrame:

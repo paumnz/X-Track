@@ -17,8 +17,8 @@ getSessionData()
     // 2. Media analysis
     show_media_analysis(sessionData)
 
-    // // 3. User analysis
-    // show_user_analysis(sessionData)
+    // 3. User analysis
+    show_user_analysis(sessionData)
 
     // // 4. Tweet analysis
     // show_tweet_analysis(sessionData)
