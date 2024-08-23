@@ -4,7 +4,7 @@ Module to implement the sentiment analysis functionality of XTRACK's engine.
 
 
 import logging
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from matplotlib.figure import Figure
 from pandas import DataFrame
@@ -40,6 +40,19 @@ class SentimentAnalyzer(Analyzer):
         super().__init__(campaigns, db_connector, log_level)
 
         self.sentiment_analyzer = create_analyzer(task = 'sentiment', lang = language)
+        self.language = language
+
+
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the TweetRedundancyAnalyzer. """
+        return """
+            SELECT sentiment, probability, language
+            FROM sentiment_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s AND
+                language = %(language)s
+        """
 
 
     def __retrieve_tweets_without_sentiment(self, hashtags) -> DataFrame:
@@ -190,34 +203,73 @@ class SentimentAnalyzer(Analyzer):
         tweet_df = tweet_df.transpose().reset_index()
         tweet_df.columns = ['sentiment', 'probability']
 
+        tweet_df = tweet_df.sort_values(by = 'probability', ascending = False)
+
         self.logger.debug(f'Retrieved the tweets with sentiment calculated published on the campaign')
 
         return tweet_df
 
 
-    def analyze(self, hashtags : Tuple[str, ...] | None = None) -> DataFrame:
+    def build_new_results(
+            self,
+            campaign_analysis_id : int,
+            hashtags : Tuple[str, ...] | None = None
+        ) -> DataFrame:
         """
         Method to carry out sentiment analysis in the given campaign/s of the XTRACK's engine.
 
         Args:
+            campaign_analysis_id: the identifier to be used for storing the results.
             hashtags: the hashtags with which to filter the activity (if any).
 
         Returns:
             The average probability per sentiment of the given campaigns and hashtags (if provided).
+
         """
+
+        # Step 1: Computing the sentiment of all tweets
         self.logger.debug('Setting up the sentiment of tweets of the given campaigns and hashtags')
 
         self.__setup_sentiment_calculation(hashtags)
 
         self.logger.debug('Finished setting up the sentiment of tweets of the given campaigns and hashtags')
 
+        # Step 2: Computing the average sentiment across tweets
         self.logger.debug('Retrieving average sentiment of tweets of the given campaigns and hashtags')
 
         self.analysis_results : DataFrame = self.__retrieve_tweets_with_sentiment(hashtags)
 
+        # Step 3: Storing the results in the DB
+        sentiment_df = self.analysis_results.copy()
+        sentiment_df['campaign_analysis_id'] = campaign_analysis_id
+        sentiment_df['language'] = self.language
+        sentiment_df = sentiment_df[['campaign_analysis_id', 'sentiment', 'probability', 'language']]
+        self.db_connector.store_table_to_sql(sentiment_df, 'sentiment_analysis_results', 'append')
+
         self.logger.debug('Retrieved average sentiment of tweets of the given campaigns and hashtags')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the sentiment probability in the tweets of the given campaign.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing SentimentAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A DataFrame describing the probability of each sentiment in the tweets of the given campaign.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, None, new_computation_kwargs)
+
 
 
     def to_pandas_dataframe(

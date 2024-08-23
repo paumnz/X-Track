@@ -4,7 +4,7 @@ Module to implement the emotion analysis functionality of XTRACK's engine.
 
 
 import logging
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from matplotlib.figure import Figure
 from pandas import DataFrame
@@ -40,6 +40,19 @@ class EmotionAnalyzer(Analyzer):
         super().__init__(campaigns, db_connector, log_level)
 
         self.emotion_analyzer = create_analyzer(task = 'emotion', lang = language)
+        self.language = language
+
+
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the EmotionAnalyzer. """
+        return """
+            SELECT emotion, probability, language
+            FROM emotion_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s AND
+                language = %(language)s
+        """
 
 
     def __retrieve_tweets_without_emotion(self, hashtags) -> DataFrame:
@@ -220,34 +233,71 @@ class EmotionAnalyzer(Analyzer):
         tweet_df = tweet_df.transpose().reset_index()
         tweet_df.columns = ['emotion', 'probability']
 
+        tweet_df = tweet_df.sort_values(by = 'probability', ascending = False)
+
         self.logger.debug(f'Retrieved the tweets with emotion calculated published on the campaign')
 
         return tweet_df
 
 
-    def analyze(self, hashtags : Tuple[str, ...] | None = None) -> DataFrame:
+    def build_new_results(
+            self,
+            campaign_analysis_id : int,
+            hashtags : Tuple[str, ...] | None = None
+        ) -> DataFrame:
         """
         Method to carry out emotion analysis in the given campaign/s of the XTRACK's engine.
 
         Args:
+            campaign_analysis_id: the identifier with which to store the results in the database.
             hashtags: the hashtags with which to filter the activity (if any).
 
         Returns:
             The average probability per emotion of the given campaigns and hashtags (if provided).
         """
+
+        # Step 1: Calculating emotion per tweet
         self.logger.debug('Setting up the emotion of tweets of the given campaigns and hashtags')
 
         self.__setup_emotion_calculation(hashtags)
 
         self.logger.debug('Finished setting up the emotion of tweets of the given campaigns and hashtags')
 
+        # Step 2: Calculating average probability per emotion
         self.logger.debug('Retrieving average emotion of tweets of the given campaigns and hashtags')
 
         self.analysis_results : DataFrame = self.__retrieve_tweets_with_emotion(hashtags)
 
+        # Step 3: Storing the results in the DB
+        emotion_df = self.analysis_results.copy()
+        emotion_df['campaign_analysis_id'] = campaign_analysis_id
+        emotion_df['language'] = self.language
+        emotion_df = emotion_df[['campaign_analysis_id', 'emotion', 'probability', 'language']]
+        self.db_connector.store_table_to_sql(emotion_df, 'emotion_analysis_results', 'append')
+
         self.logger.debug('Retrieved average emotion of tweets of the given campaigns and hashtags')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the emotion probability in the tweets of the given campaign.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing EmotionAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A DataFrame describing the probability of each emotion in the tweets of the given campaign.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, None, new_computation_kwargs)
 
 
     def to_pandas_dataframe(

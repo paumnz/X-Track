@@ -6,7 +6,7 @@ Module to implement the LIWC analysis functionality of XTRACK's engine.
 import logging
 import re
 from collections import Counter
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import liwc
 from matplotlib.figure import Figure
@@ -42,6 +42,19 @@ class LIWCAnalyzer(Analyzer):
         super().__init__(campaigns, db_connector, log_level)
 
         self.liwc_parse, _ = liwc.load_token_parser(liwc_dict_filepath)
+        self.liwc_dict_filepath = liwc_dict_filepath
+
+
+    @property
+    def pre_computed_results_query(self) -> str:
+        """ Property to retrieve the pre-computed results of the LIWCAnalyzer. """
+        return """
+            SELECT liwc_category, frequency, liwc_dict
+            FROM liwc_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s AND
+                liwc_dict = %(liwc_dict)s
+        """
 
 
     def __retrieve_tweets_without_liwc(self, hashtags) -> DataFrame:
@@ -512,34 +525,71 @@ class LIWCAnalyzer(Analyzer):
         tweet_df = tweet_df.transpose().reset_index()
         tweet_df.columns = ['liwc_category', 'frequency']
 
+        tweet_df = tweet_df.sort_values(by = 'frequency', ascending = False)
+
         self.logger.debug(f'Retrieved the tweets with LIWC calculated published on the campaign')
 
         return tweet_df
 
 
-    def analyze(self, hashtags : Tuple[str, ...] | None = None) -> DataFrame:
+    def build_new_results(
+            self,
+            campaign_analysis_id : int,
+            hashtags : Tuple[str, ...] | None = None
+        ) -> DataFrame:
         """
         Method to carry out LIWC analysis in the given campaign/s of the XTRACK's engine.
 
         Args:
+            campaign_analysis_id: the identifier with which to store the results into the database.
             hashtags: the hashtags with which to filter the activity (if any).
 
         Returns:
             The average LIWC category usage of the given campaigns and hashtags (if provided).
         """
+
+        # Step 1: Calculating LIWC categories
         self.logger.debug('Setting up the LIWC of tweets of the given campaigns and hashtags')
 
         self.__setup_liwc_calculation(hashtags)
 
         self.logger.debug('Finished setting up the LIWC of tweets of the given campaigns and hashtags')
 
+        # Step 2: Calculating average LIWC usage
         self.logger.debug('Retrieving average LIWC of tweets of the given campaigns and hashtags')
 
         self.analysis_results : DataFrame = self.__retrieve_tweets_with_liwc(hashtags)
 
+        # Step 3: Storing the results
+        liwc_df = self.analysis_results.copy()
+        liwc_df['campaign_analysis_id'] = campaign_analysis_id
+        liwc_df['liwc_dict'] = self.liwc_dict_filepath
+        liwc_df = liwc_df[['campaign_analysis_id', 'liwc_category', 'frequency', 'liwc_dict']]
+        self.db_connector.store_table_to_sql(liwc_df, 'liwc_analysis_results', 'append')
+
         self.logger.debug('Retrieved average LIWC of tweets of the given campaigns and hashtags')
 
         return self.analysis_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            pre_computation_query_params : Dict[str, Any] = {},
+            new_computation_kwargs : Dict[str, Any] = {}
+        ) -> Any:
+        """
+        Method to analyze the LIWC usage in the tweets of the given campaign.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            pre_computation_query_params: the parameters to be used for the query that checks for existing LIWCAnalyzer pre-computed results.
+            new_computation_kwargs: the arguments to be used for computing the analysis results from scratch.
+
+        Returns:
+            A DataFrame describing the usage of each LIWC category in the tweets of the given campaign.
+        """
+        return super().analyze(campaign_analysis_id, pre_computation_query_params, None, new_computation_kwargs)
 
 
     def to_pandas_dataframe(

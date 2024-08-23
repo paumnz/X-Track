@@ -379,7 +379,8 @@ def _speech_analysis(
         campaigns : Tuple[str, ...],
         hashtags : Tuple[str, ...],
         db_conn : DBConnector,
-        language : str
+        language : str,
+        campaign_analysis_id : int,
     ) -> Dict[str, Any]:
     """
     Method to carry out the speech analysis
@@ -389,29 +390,29 @@ def _speech_analysis(
         hashtags (Tuple[str, ...]): the hashtags with which to filter user activity.
         db_conn (DBConnector): the database connector instance to be used.
         language (str): the language to be used for sentiment and emotion detection.
+        campaign_analysis_id (int): the identifier to store/restore the computed results.
 
     Returns:
         A dictionary with the media outlet analysis results to be shown in the front-end.
     """
 
     # Step 1: Sentiment analysis
-    sentiment_df = SentimentAnalyzer(campaigns, db_conn, language = language).analyze(hashtags)
-    sentiment_df = sentiment_df.sort_values(by = 'probability', ascending = False)
+    sentiment_df = SentimentAnalyzer(campaigns, db_conn, language = language).analyze(campaign_analysis_id, {'language' : language}, {'hashtags' : hashtags})
     sentiment_analysis = _prepare_speech_analysis_results(sentiment_df, 'sentiment', 'probability')
 
     # Step 2: Emotion analysis
-    emotion_df = EmotionAnalyzer(campaigns, db_conn, language = language).analyze(hashtags)
-    emotion_df = emotion_df.sort_values(by = 'probability', ascending = False)
+    emotion_df = EmotionAnalyzer(campaigns, db_conn, language = language).analyze(campaign_analysis_id, {'language' : language}, {'hashtags' : hashtags})
     emotion_analysis = _prepare_speech_analysis_results(emotion_df, 'emotion', 'probability')
 
     # # Step 3: Emotion analysis
     # liwc_df = LIWCAnalyzer(campaigns, db_conn, liwc_dict_filepath = config_parser.get('liwc', 'liwc_dict_filepath')).analyze(hashtags)
     # liwc_df = liwc_df.sort_values(by = 'frequency', ascending = False)
-    # emotion_analysis = _prepare_speech_analysis_results(emotion_df, 'category', 'frequency')
+    # liwc_analysis = _prepare_speech_analysis_results(liwc_df, 'liwc_category', 'frequency')
 
     return {
         'sentiment' : sentiment_analysis,
         'emotion' : emotion_analysis,
+        # 'liwc' : liwc_analysis
     }
 
 
@@ -485,7 +486,7 @@ def analyze_campaigns():
     # Step 4: Applying an analysis
     analysis_result = {}
 
-    # analysis_result['speech_analysis'] = _speech_analysis(campaigns, hashtags, db_conn, language) # Must go first
+    analysis_result['speech_analysis'] = _speech_analysis(campaigns, hashtags, db_conn, language, campaign_analysis_stored_results[1]) # Must go first
     analysis_result['motto_analysis'] = _motto_analysis(campaigns, db_conn, campaign_analysis_stored_results[1])
     analysis_result['media_analysis'] = _media_analysis(campaigns, hashtags, db_conn, campaign_analysis_stored_results[1])
     analysis_result['user_analysis'] = _user_analysis(campaigns, hashtags, db_conn, campaign_analysis_stored_results[1])

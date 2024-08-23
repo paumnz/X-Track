@@ -26,8 +26,8 @@ getSessionData()
     // 5. Network metric analysis
     show_network_metric_analysis(sessionData)
 
-    // // 6. Speech analysis
-    // show_speech_analysis(sessionData)
+    // 6. Speech analysis
+    show_speech_analysis(sessionData)
 
     // // 7. Topic analysis
     // show_topic_analysis(sessionData)
