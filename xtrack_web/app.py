@@ -405,7 +405,8 @@ def _speech_analysis(
     emotion_analysis = _prepare_speech_analysis_results(emotion_df, 'emotion', 'probability')
 
     # # Step 3: Emotion analysis
-    # liwc_df = LIWCAnalyzer(campaigns, db_conn, liwc_dict_filepath = config_parser.get('liwc', 'liwc_dict_filepath')).analyze(hashtags)
+    # liwc_dict = config_parser.get('liwc', 'liwc_dict_filepath')
+    # liwc_df = LIWCAnalyzer(campaigns, db_conn, liwc_dict_filepath = liwc_dict).analyze(campaign_analysis_id, {'liwc_dict' : liwc_dict}, {'hashtags' : hashtags})
     # liwc_df = liwc_df.sort_values(by = 'frequency', ascending = False)
     # liwc_analysis = _prepare_speech_analysis_results(liwc_df, 'liwc_category', 'frequency')
 
