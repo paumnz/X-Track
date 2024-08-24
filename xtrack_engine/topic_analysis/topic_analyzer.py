@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Tuple
+from typing import Any, Callable, Dict, List, Literal, Tuple
 
 import gensim
 import matplotlib.pyplot as plt
@@ -63,6 +63,30 @@ class TopicAnalyzer(Analyzer):
         self.stop_words.extend(stopwords.words('french'))
         self.stop_words.extend(stopwords.words('german'))
         self.stop_words.extend(['from', 'subject', 're', 'edu', 'use', 'not', 'would', 'say', 'could', '_', 'be', 'know', 'good', 'go', 'get', 'do', 'am', 'pm', 'wtf', 'lol', 'brb', 'lmao', 'rofl', 'idk', 'rt'])
+
+
+    @property
+    def pre_computed_tweet_df_query(self) -> str:
+        """ Property to retrieve the pre-computed tweet dataframe of the TopicAnalyzer. """
+        return """
+            SELECT tweet_text, impact, topic, topic_x_coord, topic_y_coord, topic_tags
+            FROM topic_assignment_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s AND
+                spacy_model_name = %(spacy_model_name)s
+        """
+
+
+    @property
+    def pre_computed_topics_df_query(self) -> str:
+        """ Property to retrieve the pre-computed topics dataframe of the TopicAnalyzer. """
+        return """
+            SELECT word, probability, topic
+            FROM lda_topics_analysis_results
+            WHERE
+                campaign_analysis_id = %(campaign_analysis_id)s AND
+                spacy_model_name = %(spacy_model_name)s
+        """
 
 
     def __retrieve_tweets(self, hashtags) -> pd.DataFrame:
@@ -302,11 +326,17 @@ class TopicAnalyzer(Analyzer):
         return self.tweet_df
 
 
-    def analyze(self, hashtags : Tuple[str, ...] | None = None, num_topics : int = 4) -> str:
+    def build_new_results(
+            self,
+            campaign_analysis_id : int,
+            hashtags : Tuple[str, ...] | None = None,
+            num_topics : int = 4
+        ) -> str:
         """
         Method to carry out topic analysis in the given campaign/s of the XTRACK's engine.
 
         Args:
+            campaign_analysis_id: the identifier with which to store results into the database.
             hashtags: the hashtags with which to filter the activity (if any).
             num_topics: the number of topics to detect in the conversation.
 
@@ -321,6 +351,7 @@ class TopicAnalyzer(Analyzer):
 
         # Step 2: Building the LDA Model
         self.lda_model, _, self.corpus = self.__topic_detection(lemmatized_tweets, num_topics)
+        self.lda_topics = self.lda_model.show_topics(formatted = False)
 
         # Step 3: Detecting the dominant topic in each tweet
         topics_df : pd.DataFrame = self.__apply_topic_detection_model(lemmatized_tweets)
@@ -330,6 +361,108 @@ class TopicAnalyzer(Analyzer):
 
         # Step 5: Complete topic assignment to tweets
         self.__complete_topic_assignment_to_tweet_dataframe()
+
+        # Step 6: Store tweet results into the database
+        topic_assignment_df = self.tweet_df.copy()
+        topic_assignment_df = topic_assignment_df.drop(axis = 1, columns = ['likes', 'retweets'])
+        topic_assignment_df['campaign_analysis_id'] = campaign_analysis_id
+        topic_assignment_df['spacy_model_name'] = self.spacy_model_name
+        topic_assignment_df = topic_assignment_df[['campaign_analysis_id', 'tweet_text', 'impact', 'topic', 'topic_x_coord', 'topic_y_coord', 'topic_tags', 'spacy_model_name']]
+        self.db_connector.store_table_to_sql(topic_assignment_df, 'topic_assignment_analysis_results', 'append')
+
+        # Step 7: Store LDA results into the database
+        lda_df = pd.DataFrame(
+            data = [(word, proba, topic) for topic, topic_bow in self.lda_model.show_topics(formatted=False) for word, proba in topic_bow],
+            columns = ['word', 'probability', 'topic']
+        )
+        lda_df['campaign_analysis_id'] = campaign_analysis_id
+        lda_df['spacy_model_name'] = self.spacy_model_name
+        lda_df = lda_df[['campaign_analysis_id', 'word', 'probability', 'topic', 'spacy_model_name']]
+        self.db_connector.store_table_to_sql(lda_df, 'lda_topics_analysis_results', 'append')
+
+        return self.analysis_results
+
+
+    def check_for_pre_computed_results(
+            self,
+            query : str,
+            query_params : Dict[str, Any]
+        ) -> Tuple[bool, pd.DataFrame]:
+        """
+        Method that checks if there exists a previously computed result for the queried campaign/hashtags.
+
+        Args:
+            query (str): the query that checks for pre-computed results.
+            query_params (Dict[str, Any]): the query parameters to be used.
+
+        Returns:
+            A flag indicating if pre-computed results are available together with the pre-computed data.
+        """
+        self.logger.debug(f'Checking for pre-computed analysis results')
+
+        analysis_df = self.db_connector.retrieve_table_from_sql(
+            query_text = query,
+            query_params = query_params
+        )
+
+        found_precomputed_results = len(analysis_df) > 0
+
+        self.logger.debug(f'Checked for pre-computed analysis results')
+
+        return found_precomputed_results, analysis_df
+
+
+    def __format_analysis_precomputed_results(self, lda_df : pd.DataFrame) -> Tuple[Tuple[int, Tuple[Tuple[str, float], ...]], ...]:
+        """
+        Method to format the output of the pre-computed results into the expected format by the front-end.
+
+        Args:
+            lda_df (DataFrame): the Pandas DataFrame containing the LDA topics and their word distribution.
+
+        Returns:
+            The pre-computed results of the LDA topics in the expected format by the front-end.
+        """
+        self.logger.debug('Formatting pre-computed results of the TopicAnalyzer (LDAModel)')
+
+        grouped_df = lda_df.groupby('topic')
+        formatted_results = [
+            (topic, list(zip(group['word'], group['probability'])))
+            for topic, group in grouped_df
+        ]
+
+        self.logger.debug('Formatted pre-computed results of the TopicAnalyzer (LDAModel)')
+        return formatted_results
+
+
+    def analyze(
+            self,
+            campaign_analysis_id : int,
+            hashtags : Tuple[str, ...] | None = None,
+            num_topics : int = 4
+        ) -> Any:
+        """
+        Method to analyze a specific aspect of the given campaign.
+
+        Args:
+            campaign_analysis_id: the identifier to be used for storing the analysis results in the database.
+            hashtags: the hashtags with which to filter the activity (if any).
+            num_topics: the number of topics to detect in the conversation.
+        """
+        found_tweet_df, pre_computed_tweet_df = self.check_for_pre_computed_results(
+            query = self.pre_computed_tweet_df_query,
+            query_params = {'campaign_analysis_id' : campaign_analysis_id, 'spacy_model_name' : self.spacy_model_name},
+        )
+
+        found_topics_df, pre_computed_topics_df = self.check_for_pre_computed_results(
+            query = self.pre_computed_topics_df_query,
+            query_params = {'campaign_analysis_id' : campaign_analysis_id, 'spacy_model_name' : self.spacy_model_name},
+        )
+
+        if not found_tweet_df and not found_topics_df:
+            self.analysis_results = self.build_new_results(campaign_analysis_id, hashtags, num_topics)
+        else:
+            self.tweet_df = pre_computed_tweet_df
+            self.lda_topics = self.__format_analysis_precomputed_results(pre_computed_topics_df)
 
         return self.analysis_results
 
@@ -472,14 +605,14 @@ class TopicAnalyzer(Analyzer):
             LinearSegmentedColormap.from_list("yellowish", ["#FFFF66", "#FFCC00", "#FF9900"]),
         ]
 
-        topics = self.lda_model.show_topics(formatted=False)
+        topics = self.lda_topics
         num_topics = len(topics)
 
         fig = make_subplots(
             rows=(num_topics // 2) + 1, 
             cols=2,
-            horizontal_spacing=0.015,  # Minimize horizontal spacing
-            vertical_spacing=0.05,  # Minimize vertical spacing
+            horizontal_spacing=0.01,  # Minimize horizontal spacing
+            vertical_spacing=0.2,  # Minimize vertical spacing
         )
 
         for idx_topic, topic in enumerate(topics):
@@ -489,8 +622,8 @@ class TopicAnalyzer(Analyzer):
                 stopwords=STOPWORDS,
                 background_color='#1a1a2e',
                 mode="RGBA",
-                width=2500,  # Keep word cloud size within original figure size
-                height=1900,  # Keep word cloud size within original figure size
+                width=800,  # Keep word cloud size within original figure size
+                height=500,  # Keep word cloud size within original figure size
                 max_words=10,
                 colormap=color_maps[idx_topic % len(color_maps)],
                 prefer_horizontal=1.0
@@ -525,7 +658,7 @@ class TopicAnalyzer(Analyzer):
                 xref="x domain",
                 yref="y domain",
                 x=0.5,
-                y=1.15,  # Keep title position closer to the word cloud
+                y=1.5,  # Keep title position closer to the word cloud
                 showarrow=False,
                 font=dict(size=18, color="#4ecca3"),  # Slightly reduce font size to fit within original figure
                 row=(idx_topic // 2) + 1,

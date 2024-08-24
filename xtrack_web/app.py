@@ -421,7 +421,8 @@ def _topic_analysis(
         campaigns : Tuple[str, ...],
         hashtags : Tuple[str, ...],
         db_conn : DBConnector,
-        language : str
+        language : str,
+        campaign_analysis_id : int
     ) -> Dict[str, Any]:
     """
     Method to carry out the topic analysis
@@ -431,12 +432,13 @@ def _topic_analysis(
         hashtags (Tuple[str, ...]): the hashtags with which to filter user activity.
         db_conn (DBConnector): the database connector instance to be used.
         language (str): the language to be used for the topic analysis.
+        campaign_analysis_id (int): the identifier with which to store/restore the computed results.
 
     Returns:
         A dictionary with the topic analysis results to be shown in the front-end.
     """
     topic_analyzer = TopicAnalyzer(campaigns, db_conn, language = language)
-    topic_analyzer.analyze(hashtags)
+    topic_analyzer.analyze(campaign_analysis_id, hashtags)
 
     # Step 1: Plotting the wordcloud per topic
     wordcloud_fig = topic_analyzer.to_image('wordcloud')
@@ -493,7 +495,7 @@ def analyze_campaigns():
     analysis_result['user_analysis'] = _user_analysis(campaigns, hashtags, db_conn, campaign_analysis_stored_results[1])
     analysis_result['tweet_analysis'] = _tweet_analysis(campaigns, hashtags, db_conn, campaign_analysis_stored_results[1])
     analysis_result['network_metric_analysis'] = _network_metric_analysis(campaigns, hashtags, db_conn, network_metrics, campaign_analysis_stored_results[1])
-    # analysis_result['topic_analysis'] = _topic_analysis(campaigns, hashtags, db_conn, language)
+    analysis_result['topic_analysis'] = _topic_analysis(campaigns, hashtags, db_conn, language, campaign_analysis_stored_results[1])
 
     session['analysis_result'] = analysis_result
 
