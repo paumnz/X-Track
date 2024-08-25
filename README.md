@@ -8,8 +8,8 @@ Welcome to the XTrack's repository. Here you will find the framework's code and 
 
 This framework has been developed by:
 
-- Pau Muñoz (@paumnz in Github). 
-- Raúl Barba (@polarnebula in Github). If you need to contact this author you can use the following e-mail: barbarojasraul@gmail.com
+- Pau Muñoz ([@paumnz](https://github.com/paumnz) in Github). 
+- Raúl Barba ([@PolarNebula](https://github.com/PolarNebula) in Github). If you need to contact this author you can use the following e-mail: barbarojasraul@gmail.com
 
 ## Installation
 
