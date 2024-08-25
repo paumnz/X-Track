@@ -50,7 +50,7 @@ class TweetLanguageAnalyzer(Analyzer):
                     tweet.campaign IN %(campaigns)s
                 GROUP BY language
                 ORDER BY tweet_volume DESC
-                LIMIT %{top_k}s;
+                LIMIT %(top_k)s;
             """
             params = {'campaigns': tuple(self.campaigns), 'top_k' : top_k}
         else:

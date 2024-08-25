@@ -32,6 +32,9 @@ from xtrack_engine.tweet_analysis.tweet_language_analyzer import TweetLanguageAn
 from xtrack_engine.tweet_analysis.tweet_redundancy_analyzer import TweetRedundancyAnalyzer
 from xtrack_engine.tweet_analysis.word_cloud_analyzer import WordCloudAnalyzer
 from xtrack_engine.tweet_analysis.tweet_impact_analyzer import TweetImpactAnalyzer
+from xtrack_engine.twitter_data_ingestor.query_builder import TrendingTopicsManager
+from xtrack_engine.twitter_data_ingestor.query_downloader import TwitterDataIngestion
+from xtrack_engine.twitter_data_ingestor.sql_converter import DataMigration
 from xtrack_engine.user_analysis.account_creation_analyzer import AccountCreationAnalyzer
 from xtrack_engine.user_analysis.multi_criteria_user_analyzer import MultiCriteriaUserAnalyzer
 
@@ -503,6 +506,50 @@ def analyze_campaigns():
     return jsonify({'redirect': url_for('result')})
 
 
+@app.route('/ingest', methods=['POST'])
+def ingest_twitter_data():
+    """
+    Method to ingest Twitter data to be analyzed with XTRACK's framework.
+    """
+
+    # Step 1: Retrieving the configurations
+    mongo_uri = config_parser.get('mongo-db', 'mongo_uri')
+    mongo_db = config_parser.get('mongo-db', 'mongo_db')
+    default_collection = config_parser.get('mongo-db', 'default_collection')
+    tweet_collection = config_parser.get('mongo-db', 'tweet_collection')
+    user_collection = config_parser.get('mongo-db', 'user_collection')
+    twitter_bearer_token = config_parser.get('twitter-api', 'bearer_token')
+    twitter_daily_tweet_limit = config_parser.get('twitter-api', 'daily_tweet_limit')
+    sql_host = config_parser.get('database', 'host')
+    sql_port = config_parser.get('database', 'port')
+    sql_database = config_parser.get('database', 'db_name')
+    sql_username = config_parser.get('database', 'username')
+    sql_password = config_parser.get('database', 'password')
+
+    # Step 2: Retrieving the query from the user
+    data = request.get_json()
+    start_date = data.get('start_date')
+    trending_topics = data.get('trending_topics').replace(' ', '').split(',')
+    city = data.get('city')
+    days = int(data.get('days'))
+    campaign = data.get('campaign')
+
+    # Step 3: Managing the trending topics
+    trending_topic_manager = TrendingTopicsManager(start_date, trending_topics, mongo_uri, mongo_db, default_collection, city)
+    trending_topic_manager.insert_trending_topics(days = days)
+
+    # Step 4: Managing data download to MongoDB
+    data_downloader = TwitterDataIngestion(campaign, twitter_bearer_token, twitter_daily_tweet_limit, mongo_uri, mongo_db, default_collection, tweet_collection, user_collection)
+    data_downloader.fetch_and_store_tweets()
+
+    # Step 5: Manading data migration from MongoDB to MySQL
+    sql_migrator = DataMigration(mongo_uri, mongo_db, default_collection, {'host' : sql_host, 'port' : sql_port, 'username' : sql_username, 'password' : sql_password, 'database' : sql_database})
+    sql_migrator.process_tweets()
+
+    # Step 5: Redirecting the front-end to the results page
+    return jsonify({'redirect': url_for('serve_frontend')})
+
+
 @app.route('/result')
 def result():
     """
@@ -523,6 +570,22 @@ def get_session():
     if 'analysis_result' in session:
         return {'analysis_result': session['analysis_result']}
     return {'analysis_result': None}
+
+
+@app.route('/data_analysis')
+def data_analysis():
+    """
+    Method to display the results page
+    """
+    return render_template('data_analysis.html')
+
+
+@app.route('/data_download')
+def data_download():
+    """
+    Method to display the results page
+    """
+    return render_template('data_download.html')
 
 
 if __name__ == '__main__':

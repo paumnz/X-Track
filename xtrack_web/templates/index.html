@@ -3,54 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XTrack: Social Network Analysis</title>
+    <title>XTrack: Home</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
 </head>
 <body>
     <div class="container">
         <header>
-            <img src="{{ url_for('static', filename='images/xtrack-logo.jpeg') }}" alt="XTrack Logo" class="logo">
-            <h1>XTrack: Your Campaign Social Network Analysis Framework</h1>
+            <div class="header-content">
+                <img src="{{ url_for('static', filename='images/xtrack_logo_transparent.png') }}" alt="XTrack Logo" class="logo">
+                <h1>Welcome to XTrack!</h1>
+            </div>
             <p class="description">
                 XTrack is a cutting-edge framework designed to analyze social media campaigns effectively.
-                Uncover insights, track engagement, and optimize your marketing strategies with our
-                comprehensive social network analysis tools.
+                Download data from a campaign of interest, uncover insights, track engagement, and optimize your strategies with our
+                comprehensive social network analysis tool.
             </p>
         </header>
 
-        <section class="form-section">
-            <h2>Analyze Your Campaign</h2>
-            <form id="analysis-form">
-                <div class="input-group">
-                    <label for="input1">Campaign: <span class="required">*</span></label>
-                    <input type="text" id="input1" name="input1" placeholder="brexit" required>
-                </div>
-                <div class="input-group">
-                    <label for="input2">Hashtags:</label>
-                    <input type="text" id="input2" name="input2" placeholder="hashtag1, hashtag2, hashtag3, ..., hashtagN">
-                </div>
-                <div class="input-group">
-                    <label for="input3">Language for NLP analytics:</label>
-                    <input type="text" id="input3" name="input3" placeholder="en">
-                </div>
-                <div class="input-group">
-                    <label for="input4">Network metrics:</label>
-                    <input type="text" id="input4" name="input4" placeholder="efficiency, density, modularity, ..., networkMetricN">
-                </div>
-                <button type="submit" id="analyze-btn">Analyze Now</button>
-            </form>
+        <section class="functionality-section">
+            <div class="functionality-card">
+                <a href="{{ url_for('data_download') }}">
+                    <div class="card-content">
+                        <img src="{{ url_for('static', filename='images/download_icon.png') }}" alt="Download Data" class="card-image">
+                        <div class="card-text">
+                            <h3>Download X Data</h3>
+                            <p>
+                                Download campaign data from X to prepare for in-depth analysis and unlock actionable intelligence that drives your strategy.
+                            </p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="functionality-card">
+                <a href="{{ url_for('data_analysis') }}">
+                    <div class="card-content">
+                        <img src="{{ url_for('static', filename='images/analysis_icon.png') }}" alt="Analyze Campaign" class="card-image">
+                        <div class="card-text">
+                            <h3>Analyze Your Campaign</h3>
+                            <p>
+                                Analyze your social media campaign by providing necessary details to uncover insights, track engagement, and optimize strategies.
+                            </p>
+                        </div>
+                    </div>
+                </a>
+            </div>
         </section>
-
-        <div id="result" class="result"></div>
-
-        <!-- Spinner -->
-        <div id="loading-spinner" class="loading-spinner" style="display: none;">
-            <div class="spinner"></div>
-            <p>Processing, please wait...</p>
-        </div>
     </div>
-
-    <script type="module" src="{{ url_for('static', filename='js/analyze.js') }}"></script>
 </body>
 </html>

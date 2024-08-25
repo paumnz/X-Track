@@ -19,3 +19,5 @@ python-louvain
 botometer==2.0.1
 flask
 flask-session
+pymongo
+mysql-connector-python
