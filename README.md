@@ -1,4 +1,4 @@
-# XTrack
+# XTrack: A cutting-edge framework for Social Network Analysis
 
 Welcome to the XTrack's repository. Here you will find the framework's code and the installation instructions. 
 
@@ -81,4 +81,44 @@ The repository has the following structure:
 
 ## Analyzing a campaign with XTrack
 
-This section offers a user guide to analyzing a campaign's data with our framework. First, the user will access the home page of the 
+This section offers a user guide to analyzing a campaign's data with our framework. First, the user can access the home page of the framework to choose the analysis task (click):
+
+![XTrack's Home page](/assets/framework_images/home.png)
+
+Once selected, the user will see a form related to the analysis. This form further informs the engine on how the analysis task must be performed, for example, in terms of which language it should be analyzing (for sentiment and emotion detection, for example), or which network metrics the user wants to see (see list of network metrics above).
+
+![XTrack's Social Network Analysis page](/assets/framework_images/analyze.png)
+
+The first time that an analysis is run can take a significant amount of time depending on the volume of data of the campaign. However, there is no need to keep the platform open for the analysis to be completed. As soon as the analysis finishes, the result is cached and will be furthered delivered to the user when querying for it. The next image shows how the tool looks like when a computation is being performed for the given user:
+
+![XTrack's Loading page](/assets/framework_images/analyze_loading.png)
+
+Once the results are obtained, the user will be able to gather relevant information on the given campaign. First, conversation mottos are shown. While all publications are considered by default, the user can choose to see the most negative or the most positive mottos, instead of the most employed mottos, by using selecting the specific sentiment in the listbox:
+
+![XTrack's Motto analysis](/assets/framework_images/analyze_sentiment.png)
+
+The user will also find XTrack's analysis on the user accounts that were active on the campaign, just as can be seen in the following images:
+
+![XTrack's User analysis](/assets/framework_images/analyze_users.png)
+
+Next, the user will also see the analysis performed on the publications of the campaign:
+
+![XTrack's Tweet analysis (part I)](/assets/framework_images/analyze_tweet_1.png)
+![XTrack's Tweet analysis (part II)](/assets/framework_images/analyze_tweet_2.png)
+![XTrack's Tweet analysis (part III)](/assets/framework_images/analyze_tweet_3.png)
+![XTrack's Tweet analysis (part IV)](/assets/framework_images/analyze_tweet_4.png)
+
+The user can also see an in-depth network analysis, with two different conversation graphs, as well the evolution of the selected network metrics over time:
+
+![XTrack's Network analysis (part I)](/assets/framework_images/analyze_network_1.png)
+![XTrack's Network analysis (part II)](/assets/framework_images/analyze_network_2.png)
+![XTrack's Network analysis (part III)](/assets/framework_images/analyze_network_3.png)
+
+Regarding speech analysis, the user can easily see the most dominant sentiments and emotions during the given campaign:
+
+![XTrack's Speech analysis](/assets/framework_images/analyze_speech.png)
+
+Last, the topic analysis is shown, showing the most impactful topics in the conversation, the most relevant words per topic, as well as the post distribution (faceted by topic) in a 2-dimensional plot of the conversation:
+
+![XTrack's Topic analysis (part I)](/assets/framework_images/analyze_topics_1.png)
+![XTrack's Topic analysis (part II)](/assets/framework_images/analyze_topics_2.png)
