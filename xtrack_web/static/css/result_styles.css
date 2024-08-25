@@ -1,0 +1,272 @@
+/* Global Styles */
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #1a1a2e;
+    margin: 0;
+    padding: 0;
+    color: #eaeaea;
+}
+
+/* Full-Page Container */
+.full-page-container {
+    padding: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Section Styling */
+.section {
+    background-color: #161625;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
+    border: 1px solid #44475a;
+}
+
+.section h2 {
+    font-size: 24px;
+    margin-bottom: 15px;
+    color: #4ecca3;
+}
+
+.section p,
+.section ul {
+    font-size: 16px;
+    color: #cfcfcf;
+    margin-bottom: 10px;
+}
+
+/* Table Styling */
+.table-container {
+    overflow-x: auto;
+    overflow-y: auto; /* Enable vertical scrolling */
+    max-height: 300px;
+    scrollbar-color: #4ecca3 #161625;
+    scrollbar-width: thin;
+}
+
+.table-container::-webkit-scrollbar {
+    width: 8px; /* Width of the scrollbar */
+    height: 8px; /* Height of the horizontal scrollbar */
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background-color: #4ecca3; /* Thumb (the moving part) color */
+    border-radius: 10px; /* Rounded edges */
+    border: 2px solid #2e2e3d; /* Adds some space and matches the table background */
+}
+
+.table-container::-webkit-scrollbar-track {
+    background-color: #161625; /* Track (the background) color */
+    border-radius: 10px; /* Rounded edges */
+}
+
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+th {
+    padding: 10px;
+    text-align: center;
+    border-bottom: 1px solid #44475a;
+    color: #eaeaea;
+}
+
+td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #44475a;
+    color: #eaeaea;
+}
+
+th {
+    background-color: #2e2e3d;
+    color: #4ecca3;
+}
+
+tr:hover {
+    background-color: #2e2e3d; /* Highlight row on hover */
+}
+
+/* Image Styling */
+img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-top: 15px;
+}
+
+/* Back Button Styling */
+.back-btn {
+    padding: 12px 25px;
+    background-color: #4ecca3;
+    color: #1a1a2e;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: background-color 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    margin-top: 20px;
+}
+
+.back-btn:hover {
+    background-color: #3b8c7d;
+}
+
+.xtrack-analysis-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+/* Styling for the controls (label and select box) */
+.xtrack-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #2e2e3d;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    border: 1px solid #44475a;
+}
+
+.xtrack-controls label {
+    color: #4ecca3;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.xtrack-controls select {
+    background-color: #161625;
+    color: #eaeaea;
+    padding: 8px;
+    border: 1px solid #44475a;
+    border-radius: 4px;
+    font-family: 'Roboto', sans-serif;
+}
+
+/* Canvas container styling */
+.xtrack-canvas-container {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+}
+
+canvas {
+    background-color: transparent; /* Make the background invisible */
+    border-radius: 8px;
+    box-shadow: none; /* Remove the shadow */
+    border: none; /* Remove the border */
+}
+
+.canvas-box {
+    flex: 1;
+    background-color: #1a1a2e;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
+    border: 1px solid #44475a;
+    margin: 20px;
+    text-align: center;
+}
+
+.canvas-box h3 {
+    color: #4ecca3;
+    font-size: 20px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+/* Tooltip container */
+.tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+    color: #4ecca3;
+}
+
+/* Tooltip text */
+.tooltip .tooltip-text {
+    visibility: hidden;
+    width: 250px; /* Increased width to accommodate bullet points */
+    background-color: #44475a;
+    color: #eaeaea;
+    text-align: left; /* Left align for bullet points */
+    border-radius: 6px;
+    padding: 10px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%; /* Position above the text */
+    left: 50%;
+    margin-left: -125px; /* Centers the tooltip */
+    opacity: 0;
+    transition: opacity 0.3s;
+    line-height: 1.5;
+    font-size: 14px; /* Slightly smaller font size for readability */
+}
+
+/* Tooltip arrow */
+.tooltip .tooltip-text::after {
+    content: '';
+    position: absolute;
+    top: 100%; /* At the bottom of the tooltip */
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #44475a transparent transparent transparent;
+}
+
+/* Show the tooltip text when hovering */
+.tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+#plotly-chart {
+    width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    background-color: transparent; /* Ensure no background color */
+}
+
+.plotly-box {
+    flex: 1;
+    background-color: #1a1a2e;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
+    border: 1px solid #44475a;
+    margin: 20px;
+}
+
+.plotly-box h3 {
+    color: #4ecca3;
+    font-size: 20px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+#cv_tweet_language {
+    display: block; /* Ensures block-level centering */
+    margin: 0 auto; /* Centers the canvas horizontally */
+}
+
+#cv_tweet_word_cloud {
+    display: flex; /* Flexbox to center contents */
+    justify-content: center; /* Centers horizontally */
+    align-items: center; /* Centers vertically */
+    margin: 0 auto; /* Ensures the div itself is centered */
+    width: 100%; /* Adjust width as needed */
+}

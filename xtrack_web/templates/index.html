@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XTrack: Home</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+    <link rel="icon" type="image/png" sizes="128x128" href="{{ url_for('static', filename='images/xtrack_logo_transparent.png') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <img src="{{ url_for('static', filename='images/xtrack_logo_transparent.png') }}" alt="XTrack Logo" class="logo">
+                <h1>Welcome to XTrack!</h1>
+            </div>
+            <p class="description">
+                XTrack is a cutting-edge framework designed to analyze social media campaigns effectively.
+                Download data from a campaign of interest, uncover insights, track engagement, and optimize your strategies with our
+                comprehensive social network analysis tool.
+            </p>
+        </header>
+
+        <section class="functionality-section">
+            <div class="functionality-card">
+                <a href="{{ url_for('data_download') }}">
+                    <div class="card-content">
+                        <img src="{{ url_for('static', filename='images/download_icon.png') }}" alt="Download Data" class="card-image">
+                        <div class="card-text">
+                            <h3>Download X Data</h3>
+                            <p>
+                                Download campaign data from X to prepare for in-depth analysis and unlock actionable intelligence that drives your strategy.
+                            </p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="functionality-card">
+                <a href="{{ url_for('data_analysis') }}">
+                    <div class="card-content">
+                        <img src="{{ url_for('static', filename='images/analysis_icon.png') }}" alt="Analyze Campaign" class="card-image">
+                        <div class="card-text">
+                            <h3>Analyze Your Campaign</h3>
+                            <p>
+                                Analyze your social media campaign by providing necessary details to uncover insights, track engagement, and optimize strategies.
+                            </p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
