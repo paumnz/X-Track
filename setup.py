@@ -16,7 +16,7 @@ def read_requirements(requirements_fname : str = 'requirements.txt') -> Tuple[st
 
 setup(
     name = 'xtrack_engine',
-    version = '0.1.0',
+    version = '1.0.0',
     description = 'The engine that X-TRACK uses to provide its computational capabilities.',
     url = 'https://github.com/paumnz/X-Track/',
     packages = find_packages(include=['xtrack_engine', 'xtrack_engine.*']),
